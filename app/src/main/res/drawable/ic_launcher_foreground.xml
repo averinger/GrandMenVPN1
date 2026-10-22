@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Адаптивная иконка GrandMenVPN: передний план — стилизованный щит с буквой "G". -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Градиентная заливка щита: изумрудный → тёмно-зелёный -->
+    <gradient
+        android:id="@+id/shield_gradient"
+        android:type="linear"
+        android:startX="54" android:startY="20"
+        android:endX="54" android:endY="88"
+        android:startColor="#00E676"
+        android:endColor="#00331E"/>
+
+    <!-- Щит -->
+    <path
+        android:fillColor="@id/shield_gradient"
+        android:pathData="M54,18 Q24,18 18,48 Q18,86 54,86 Q90,86 90,48 Q84,18 54,18 Z"/>
+
+    <!-- Буква "G" -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,44 C48,44 44,46 42,49 C40,52 40,55 41,58 C42,61 44,63 46,64 H56 V69 H40 C32,69 26,65 24,59 C22,53 24,47 26,43 C28,39 32,37 36,37 C42,37 46,39 48,43 L50,43 V48 Z"/>
+</vector>
