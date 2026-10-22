@@ -1,6 +1,15 @@
 package com.grandmenvpn.app.ui.screens
 
-import androidx.compose.runtime.*
+// Явные импорты для рантайма, чтобы избежать конфликта Ambiguity
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -29,9 +38,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-// ВАЖНО: Эти два импорта решают ошибку Property delegate
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,15 +47,16 @@ fun HomeScreen(
 ) {
     val scope = rememberCoroutineScope()
     var connected by remember { mutableStateOf(false) }
-    var seconds by remember { mutableIntStateOf(0) }
+    var seconds by remember { mutableStateOf(0) }
     var serverIp by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf("Готов к подключению") }
     var servers by remember { mutableStateListOf<FoundServer>() }
     var scanRunning by remember { mutableStateOf(false) }
     var selectedProfile by remember { mutableStateOf<FoundServer?>(null) }
 
-    var pulseScale by remember { mutableFloatStateOf(1f) }
-    var pulseAlpha by remember { mutableFloatStateOf(0f) }
+    // Используем обычный mutableStateOf для Float, чтобы избежать проблем с делегатами
+    var pulseScale by remember { mutableStateOf(1f) }
+    var pulseAlpha by remember { mutableStateOf(0f) }
 
     LaunchedEffect(connected) {
         pulseScale = 1f
