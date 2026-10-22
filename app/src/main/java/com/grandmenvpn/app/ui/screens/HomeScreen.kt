@@ -58,21 +58,6 @@ fun HomeScreen(
     val pulseScale = remember { mutableStateOf(1f) }
     val pulseAlpha = remember { mutableStateOf(0f) }
 
-    // --- ЛАУНЧЕР ДЛЯ ЗАПРОСА РАЗРЕШЕНИЯ VPN ---
-    val vpnPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val s = selectedProfile.value
-            if (s != null) {
-                scope.launch { performVpnConnection(s) }
-            }
-        } else {
-            status.value = "В разрешении на VPN отказано"
-            com.grandmenvpn.app.utils.DebugLogger.error("VPN", "Пользователь отклонил разрешение VPN")
-        }
-    }
-
     suspend fun performVpnConnection(s: FoundServer) {
         status.value = "Проверка IP до подключения..."
         com.grandmenvpn.app.utils.DebugLogger.log("VPN", "Начало подключения к ${s.host}:${s.port}")
@@ -104,6 +89,21 @@ fun HomeScreen(
         } else {
             com.grandmenvpn.app.utils.DebugLogger.error("VPN", "vpnManager.start() вернул false")
             status.value = "Ошибка запуска VPN"
+        }
+    }
+
+    // --- ЛАУНЧЕР ДЛЯ ЗАПРОСА РАЗРЕШЕНИЯ VPN ---
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val s = selectedProfile.value
+            if (s != null) {
+                scope.launch { performVpnConnection(s) }
+            }
+        } else {
+            status.value = "В разрешении на VPN отказано"
+            com.grandmenvpn.app.utils.DebugLogger.error("VPN", "Пользователь отклонил разрешение VPN")
         }
     }
 
