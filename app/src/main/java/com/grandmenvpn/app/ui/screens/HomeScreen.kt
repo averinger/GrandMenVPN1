@@ -119,10 +119,18 @@ fun HomeScreen(
                     val outbounds = json.optJSONArray("outbounds")
                     if (outbounds != null && outbounds.length() > 0) {
                         val outbound = outbounds.getJSONObject(0)
-                        realHost = outbound.optString("server", custom.name)
-                        realPort = outbound.optInt("server_port", 0)
+                        realHost = outbound.optString("server", outbound.optString("host", custom.name))
+                        realPort = outbound.optInt("server_port", outbound.optInt("port", 0))
                     }
-                } catch (e: Exception) { }
+                } catch (e: Exception) {
+                    // Если это сырой WireGuard, вытаскиваем IP и порт регуляркой
+                    val regex = Regex("""Endpoint\s*=\s*([^:]+):(\d+)""")
+                    val match = regex.find(custom.config)
+                    if (match != null) {
+                        realHost = match.groupValues[1]
+                        realPort = match.groupValues[2].toIntOrNull() ?: 0
+                    }
+                }
 
                 FoundServer(
                     protocol = "Custom",

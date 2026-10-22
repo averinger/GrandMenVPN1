@@ -1,6 +1,7 @@
 package com.grandmenvpn.app.vpn
 
 import android.content.Context
+import android.content.Intent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -26,10 +27,9 @@ class VpnManager(private val context: Context) {
 
     /** Запускает sing-box с JSON-конфигурацией (outbounds / endpoints). */
     suspend fun start(configJson: String): Boolean = withContext(Dispatchers.IO) {
-        // При подключении libbox:
-        // platform = PlatformInterface(context)
-        // commandServer = platform.createCommandServer()
-        // commandServer.start(configJson)
+        val intent = Intent(context, MyVpnService::class.java)
+        intent.putExtra("config_json", configJson)
+        context.startService(intent)
         isRunning = true
         true
     }
