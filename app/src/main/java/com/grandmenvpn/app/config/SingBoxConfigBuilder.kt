@@ -55,7 +55,7 @@ object SingBoxConfigBuilder {
 
         val outbounds = buildJsonArray {
             add(proxyOutbound)
-            add(buildJsonObject { put("type", "direct"); put("tag", DIRECT_TAG) })
+            add(buildJsonObject { put("type", jsonPrimitive("direct")); put("tag", jsonPrimitive(DIRECT_TAG)) })
         }
 
         val rules = buildJsonArray {
@@ -68,10 +68,10 @@ object SingBoxConfigBuilder {
 
         val ruleSets = buildJsonArray {
             if (useGeoipRu) add(buildJsonObject {
-                put("tag", "geoip-ru")
-                put("type", "remote")
-                put("format", "srs")
-                put("url", "https://raw.githubusercontent.com/SagerNet/sing-geosite/master/rule-set/geoip-ru.srs")
+                put("tag", jsonPrimitive("geoip-ru"))
+                put("type", jsonPrimitive("remote"))
+                put("format", jsonPrimitive("srs"))
+                put("url", jsonPrimitive("https://raw.githubusercontent.com/SagerNet/sing-geosite/master/rule-set/geoip-ru.srs"))
             })
         }
 
