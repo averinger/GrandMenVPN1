@@ -1,7 +1,9 @@
 package com.grandmenvpn.app.parser
 
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.nio.charset.Charsets
 import java.util.Base64
 
 /**
@@ -74,12 +76,12 @@ class ShadowsocksParser : ConfigParser {
         if (method.isEmpty() || host.isEmpty() || port <= 0) return null
 
         val outbound = buildJsonObject {
-            put("type", "shadowsocks")
-            put("tag", "proxy")
-            put("server", host)
+            put("type", jsonPrimitive("shadowsocks"))
+            put("tag", jsonPrimitive("proxy"))
+            put("server", jsonPrimitive(host))
             put("server_port", port)
-            put("method", method)
-            put("password", password)
+            put("method", jsonPrimitive(method))
+            put("password", jsonPrimitive(password))
         }
         return outboundJson(outbound)
     }

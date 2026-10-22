@@ -7,6 +7,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.URI
+import java.nio.charset.Charsets
 import java.util.Base64
 
 /**
