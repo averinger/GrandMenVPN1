@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -18,6 +17,7 @@ import androidx.compose.material3.tokens.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,7 +31,6 @@ import com.grandmenvpn.app.config.CustomServerManager
 import com.grandmenvpn.app.parser.ParserRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +46,7 @@ fun CustomServersScreen(
     var jsonInput by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent("application/json")) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { scope.launch { importUri(it) } }
     }
 
@@ -61,7 +60,7 @@ fun CustomServersScreen(
             status = "Не удалось распарсить JSON"
             return
         }
-        val preview = text.lines().firstOrDefault()?.take(60) ?: ""
+        val preview = text.lines().firstOrNull()?.take(60) ?: ""
         val server = CustomServer(name = "Импортированный ($preview)", config = text, outboundJson = outbound)
         scope.launch {
             manager.add(server)
@@ -72,12 +71,14 @@ fun CustomServersScreen(
         jsonInput = ""
     }
 
-    fun importUri(uri: Uri) = withContext(Dispatchers.IO) {
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            val text = input.bufferedReader().readText()
-            withContext(Dispatchers.Main) {
-                jsonInput = text
-                dialogOpen = true
+    fun importUri(uri: Uri) {
+        scope.launch(Dispatchers.IO) {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val text = input.bufferedReader().readText()
+                withContext(Dispatchers.Main) {
+                    jsonInput = text
+                    dialogOpen = true
+                }
             }
         }
     }
@@ -95,7 +96,7 @@ fun CustomServersScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = s.name, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                text = s.config.lines().firstOrDefault()?.take(70) ?: "",
+                                text = s.config.lines().firstOrNull()?.take(70) ?: "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

@@ -3,7 +3,7 @@ package com.grandmenvpn.app.config
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.core.preferencesDataStore
 import androidx.datastore.preferences.Preferences
 import kotlinx.coroutines.flow.first
 
@@ -20,14 +20,14 @@ object SplitRouteManager {
         context.preferencesDataStore(name = "split_route_prefs")
 
     suspend fun isAutoSplitEnabled(context: Context): Boolean =
-        dataStore(context).data.first { (it: Preferences).containsKey(AUTO_SPLIT) }[AUTO_SPLIT] ?: false
+        dataStore(context).data.first { it.containsKey(AUTO_SPLIT) }.let { it[AUTO_SPLIT] ?: false }
 
     suspend fun setAutoSplitEnabled(context: Context, enabled: Boolean) =
-        dataStore(context).edit { (it: Preferences)[AUTO_SPLIT] = enabled }
+        dataStore(context).edit { it[AUTO_SPLIT] = enabled }
 
     suspend fun isKillSwitchEnabled(context: Context): Boolean =
-        dataStore(context).data.first { (it: Preferences).containsKey(KILL_SWITCH) }[KILL_SWITCH] ?: false
+        dataStore(context).data.first { it.containsKey(KILL_SWITCH) }.let { it[KILL_SWITCH] ?: false }
 
     suspend fun setKillSwitchEnabled(context: Context, enabled: Boolean) =
-        dataStore(context).edit { (it: Preferences)[KILL_SWITCH] = enabled }
+        dataStore(context).edit { it[KILL_SWITCH] = enabled }
 }

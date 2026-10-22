@@ -1,5 +1,6 @@
 package com.grandmenvpn.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,7 +34,7 @@ fun ServerList(
         }
     }
 
-    LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
         items(servers, key = { it.host + it.port }) { s ->
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
