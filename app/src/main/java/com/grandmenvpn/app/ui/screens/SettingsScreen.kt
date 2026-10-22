@@ -215,7 +215,7 @@ fun SettingsScreen(
 
     // --- СКРЫТОЕ МЕНЮ РАЗРАБОТЧИКА ---
     if (showDevMenu) {
-        val logs by DebugLogger.logs.collectAsState()
+        val logs: List<String> by DebugLogger.logs.collectAsState()
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
         Dialog(

@@ -159,10 +159,12 @@ fun HomeScreen(
 
     fun connect() {
         if (connected.value) {
-            vpnManager.stop()
-            connected.value = false
-            serverIp.value = null
-            status.value = "Готов к подключению"
+            scope.launch { // <--- Оборачиваем в корутину
+                vpnManager.stop()
+                connected.value = false
+                serverIp.value = null
+                status.value = "Готов к подключению"
+            }
         } else {
             val s = selectedProfile.value
             if (s != null) {
