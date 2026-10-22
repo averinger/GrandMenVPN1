@@ -18,13 +18,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.grandmenvpn.app.scanner.FoundServer
 import com.grandmenvpn.app.scanner.ServerScanner
 import com.grandmenvpn.app.vpn.VpnManager
+import com.grandmenvpn.app.config.CustomServerManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -37,10 +38,11 @@ fun HomeScreen(
     serverScanner: ServerScanner
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val customServerManager = remember { CustomServerManager(context) }
     
-    // УБРАЛИ 'by'. Теперь это просто объекты State, и мы дергаем .value
+    // Состояния (без таймера)
     val connected = remember { mutableStateOf(false) }
-    val seconds = remember { mutableStateOf(0) }
     val serverIp = remember { mutableStateOf<String?>(null) }
     val status = remember { mutableStateOf("Готов к подключению") }
     val servers = remember { mutableStateListOf<FoundServer>() }
@@ -50,6 +52,28 @@ fun HomeScreen(
     val pulseScale = remember { mutableStateOf(1f) }
     val pulseAlpha = remember { mutableStateOf(0f) }
 
+    // Загрузка кастомных серверов при старте
+    LaunchedEffect(Unit) {
+        try {
+            val customServers = customServerManager.load()
+            val mappedServers = customServers.map { custom ->
+                FoundServer(
+                    protocol = "Custom",
+                    host = custom.name,
+                    port = 0,
+                    pingMs = 0,
+                    source = "Manual",
+                    config = custom.config,
+                    outboundJson = custom.outboundJson
+                )
+            }
+            servers.addAll(mappedServers)
+        } catch (e: Exception) {
+            // Игнорируем, если файла еще нет
+        }
+    }
+
+    // Анимация пульсации кнопки
     LaunchedEffect(connected.value) {
         pulseScale.value = 1f
         pulseAlpha.value = 0f
@@ -68,21 +92,6 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(connected.value) {
-        if (connected.value) {
-            launch {
-                while (connected.value) {
-                    delay(1000)
-                    if (connected.value) seconds.value++
-                }
-            }
-        } else {
-            seconds.value = 0
-        }
-    }
-
-    val timerText = "${seconds.value / 60}:${seconds.value % 60}".padStart(2, '0')
-
     val buttonBrush = Brush.linearGradient(
         colors = if (connected.value)
             listOf(Color(0xFFF44336), Color(0xFFB71C1C))
@@ -94,29 +103,56 @@ fun HomeScreen(
 
     fun connect() = scope.launch {
         if (connected.value) {
-            vpnManager.stop(); connected.value = false; seconds.value = 0; serverIp.value = null
+            vpnManager.stop()
+            connected.value = false
+            serverIp.value = null
             status.value = "Готов к подключению"
         } else {
             val s = selectedProfile.value
             if (s != null) {
+                status.value = "Подключение…"
                 val ok = vpnManager.start(s.outboundJson)
-                if (ok) { connected.value = true; serverIp.value = s.host; status.value = "Подключён к ${s.host}" }
-                else { status.value = "Ошибка подключения" }
+                if (ok) {
+                    connected.value = true
+                    serverIp.value = s.host
+                    status.value = "Подключён к ${s.host}"
+                } else {
+                    status.value = "Ошибка подключения"
+                }
+            } else {
+                status.value = "Сначала выберите сервер из списка"
             }
         }
     }
 
     fun connectTo(s: FoundServer) = scope.launch {
-        selectedProfile.value = s; status.value = "Подключение…"
+        selectedProfile.value = s
+        status.value = "Подключение…"
         val ok = vpnManager.start(s.outboundJson)
-        if (ok) { connected.value = true; serverIp.value = s.host; status.value = "Подключён к ${s.host}" }
-        else { connected.value = false; status.value = "Ошибка подключения" }
+        if (ok) {
+            connected.value = true
+            serverIp.value = s.host
+            status.value = "Подключён к ${s.host}"
+        } else {
+            connected.value = false
+            status.value = "Ошибка подключения"
+        }
     }
 
     fun scan() = scope.launch {
         scanRunning.value = true
+        status.value = "Сканирование серверов..."
         val found = serverScanner.scan()
-        withContext(Dispatchers.Main) { servers.clear(); servers.addAll(found); scanRunning.value = false }
+        
+        withContext(Dispatchers.Main) {
+            // Сохраняем кастомные серверы
+            val customServers = servers.filter { it.source == "Manual" }
+            servers.clear()
+            servers.addAll(customServers)
+            servers.addAll(found)
+            scanRunning.value = false
+            status.value = if (found.isEmpty()) "Ничего не найдено" else "Найдено серверов: ${found.size}"
+        }
     }
 
     Scaffold(
@@ -142,11 +178,15 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            Text(text = status.value, style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
-                modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text(
+                text = status.value,
+                style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Кнопка подключения
             Box(modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)) {
                 Box(modifier = Modifier
                     .size(186.dp)
@@ -189,27 +229,15 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = timerText,
-                style = TextStyle(
-                    fontSize = 56.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Default,
-                    color = MaterialTheme.colorScheme.onBackground
-                ),
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-
+            // IP сервера
             serverIp.value?.let { ip ->
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "IP: $ip",
                     style = TextStyle(fontSize = 18.sp, color = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
+                Spacer(modifier = Modifier.height(8.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = { scan() },
@@ -232,12 +260,13 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(if (scanRunning.value) "Сканирование…" else if (connected.value) "Подключено" else "Сканировать серверы")
+                    Text(if (scanRunning.value) "Сканирование…" else "Сканировать серверы")
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Надпись "Доступные серверы" (без таймера)
             Text(
                 text = "Доступные серверы",
                 style = TextStyle(
@@ -250,7 +279,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Передаем selectedProfile.value
+            // Список серверов
             ServerList(servers = servers, selectedProfile = selectedProfile.value, onConnect = ::connectTo)
         }
     }
