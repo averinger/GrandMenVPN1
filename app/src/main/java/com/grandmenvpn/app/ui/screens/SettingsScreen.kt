@@ -1,22 +1,33 @@
 package com.grandmenvpn.app.ui.screens
 
-import androidx.compose.runtime.*
-import androidx.compose.material3.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.grandmenvpn.app.config.SplitRouteManager
 import com.grandmenvpn.app.config.WhitelistManager
+import com.grandmenvpn.app.utils.DebugLogger
 import com.grandmenvpn.app.vpn.VpnManager
 import kotlinx.coroutines.launch
 
@@ -38,6 +49,10 @@ fun SettingsScreen(
     var mtu by remember { mutableStateOf("1400") }
     var connectTimeout by remember { mutableStateOf("10") }
     var versionName by remember { mutableStateOf("1.0") }
+
+    // Состояния для пасхалки и меню
+    var tapCount by remember { mutableStateOf(0) }
+    var showDevMenu by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -52,10 +67,11 @@ fun SettingsScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
         Text(text = "Настройки", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(8.dp))
 
+        // VPN Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -80,71 +96,12 @@ fun SettingsScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                     )
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Таймаут подключения", style = MaterialTheme.typography.bodyMedium)
-                        Text("Секунды ожидания (по умолчанию 10)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    OutlinedTextField(
-                        value = connectTimeout,
-                        onValueChange = { connectTimeout = it.filter { c -> c.isDigit() } },
-                        modifier = Modifier.width(120.dp),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
-                    )
-                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("DNS", style = MaterialTheme.typography.titleMedium)
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-                Column {
-                    listOf("Авто", "Кастомный", "Системный").forEachIndexed { index, label ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { dnsMode = index },
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
-                            RadioButton(
-                                selected = dnsMode == index,
-                                onClick = { dnsMode = index }
-                            )
-                        }
-                    }
-                }
-
-                if (dnsMode == 1) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = customDns,
-                        onValueChange = { customDns = it },
-                        label = { Text("DNS серверы (через запятую)") },
-                        placeholder = { Text("1.1.1.1, 8.8.8.8") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Routing Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -166,7 +123,6 @@ fun SettingsScreen(
                     )
                     Column {
                         Text("Авто-сплит RU-трафика", style = MaterialTheme.typography.bodyMedium)
-                        Text("Российские подсети идут минуя VPN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -184,51 +140,15 @@ fun SettingsScreen(
                         }
                     )
                     Column {
-                        Text("Kill Switch", style = MaterialTheme.typography.bodyMedium)
-                        Text("Блокировать интернет при разрыве VPN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Kill Switch (безопасный разрыв)", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clickable { /* TODO */ },
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Белый список доменов", style = MaterialTheme.typography.bodyMedium)
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Интерфейс", style = MaterialTheme.typography.titleMedium)
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = showNotifications,
-                        onCheckedChange = { showNotifications = it }
-                    )
-                    Text("Показывать уведомление VPN")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // About & Info
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -237,63 +157,44 @@ fun SettingsScreen(
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)
                 Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                // Кнопка Инфо
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showInfoDialog = true }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Инструкция по использованию", style = MaterialTheme.typography.bodyMedium)
+                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // СКРЫТАЯ КНОПКА (ПАСХАЛКА)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { 
+                            tapCount++
+                            if (tapCount >= 10) {
+                                showDevMenu = true
+                                tapCount = 0
+                            }
+                        }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text("Версия", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.weight(1f))
                     Text(versionName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("VPN движок", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("sing-box (libbox)", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("Протоколы", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text("VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, AmneziaWG", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
         }
-
+        
         Spacer(modifier = Modifier.height(24.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A1A1A))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Опасная зона", style = MaterialTheme.typography.titleMedium, color = Color(0xFFFF8A80))
-                Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFFF8A80))
-
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column {
-                        Text("Очистить все данные", style = MaterialTheme.typography.bodyMedium)
-                        Text("Удалить серверы, белый список и настройки", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    TextButton(onClick = { /* TODO */ }) {
-                        Text("ОЧИСТИТЬ", style = TextStyle(color = Color(0xFFFF8A80), fontWeight = FontWeight.Bold))
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = { showInfoDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("Инструкция по использованию", color = MaterialTheme.colorScheme.onPrimary)
-        }
     }
 
+    // --- ДИАЛОГ С ИНСТРУКЦИЕЙ ---
     if (showInfoDialog) {
         AlertDialog(
             onDismissRequest = { showInfoDialog = false },
@@ -303,11 +204,88 @@ fun SettingsScreen(
                      "2. Нажмите 'Сканировать серверы' и подождите.\n" +
                      "3. Выберите сервер из списка (нажмите 'Подключить' на сервере).\n" +
                      "4. Нажмите большую кнопку 'GMVPN Connect'.\n" +
-                     "5. Приятного пользования!")
+                     "5. Разрешите системе создать VPN-подключение.\n" +
+                     "6. Приятного пользования!")
             },
             confirmButton = {
                 TextButton(onClick = { showInfoDialog = false }) { Text("Понятно") }
             }
         )
+    }
+
+    // --- СКРЫТОЕ МЕНЮ РАЗРАБОТЧИКА ---
+    if (showDevMenu) {
+        val logs by DebugLogger.logs.collectAsState()
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
+        Dialog(
+            onDismissRequest = { showDevMenu = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                color = Color(0xFF121212),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Developer Menu", color = Color.Green, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Системная инфа
+                    Text("Device: ${Build.MANUFACTURER} ${Build.MODEL}", color = Color.LightGray, fontSize = 12.sp)
+                    Text("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})", color = Color.LightGray, fontSize = 12.sp)
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Логи
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth().background(Color.Black).padding(8.dp)) {
+                        if (logs.isEmpty()) {
+                            Text("Логов пока нет...", color = Color.Gray, fontSize = 12.sp)
+                        } else {
+                            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                logs.forEach { logLine ->
+                                    Text(
+                                        text = logLine,
+                                        color = if (logLine.contains("[ERROR]")) Color.Red else Color.Green,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Кнопки управления
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Button(
+                            onClick = {
+                                val fullLog = "Device: ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE}\nApp Ver: $versionName\n\n" + logs.joinToString("\n")
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Logs", fullLog))
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                        ) {
+                            Text("Скопировать", color = Color.White)
+                        }
+
+                        Button(
+                            onClick = { DebugLogger.clear() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                        ) {
+                            Text("Очистить", color = Color.White)
+                        }
+
+                        Button(
+                            onClick = { showDevMenu = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        ) {
+                            Text("Закрыть", color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
