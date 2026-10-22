@@ -3,34 +3,13 @@ package com.grandmenvpn.app.ui.screens
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.material3.tokens.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -51,13 +30,13 @@ fun CustomServersScreen(
     val context = LocalContext.current
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val scope = rememberCoroutineScope()
-    val servers: MutableList<CustomServer> by remember { mutableStateListOf() }
+    val servers = remember { mutableStateListOf<CustomServer>() }
     var dialogOpen by remember { mutableStateOf(false) }
     var jsonInput by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { importUri(it) } }
+        uri?.let { scope.launch { importUri(context, it) } }
     }
 
     LaunchedEffect(Unit) {
@@ -81,9 +60,9 @@ fun CustomServersScreen(
         jsonInput = ""
     }
 
-    fun importUri(uri: Uri) {
+    fun importUri(ctx: Context, uri: Uri) {
         scope.launch(Dispatchers.IO) {
-            context.contentResolver.openInputStream(uri)?.use { input ->
+            ctx.contentResolver.openInputStream(uri)?.use { input ->
                 val text = input.bufferedReader().readText()
                 withContext(Dispatchers.Main) {
                     jsonInput = text
@@ -96,7 +75,7 @@ fun CustomServersScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("Мои серверы") },
-            colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color(0xFF222222))
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF222222))
         )
 
         LazyColumn(modifier = Modifier.weight(1f).padding(16.dp)) {
@@ -119,9 +98,9 @@ fun CustomServersScreen(
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = { filePicker.launch(Unit) }) {
+            Button(onClick = { filePicker.launch("*/*") }) {
                 Text("📂 Загрузить JSON")
             }
             Button(onClick = { dialogOpen = true }) {
@@ -135,12 +114,11 @@ fun CustomServersScreen(
     }
 
     if (dialogOpen) {
-        val hasClip = clipboard.primaryClip?.getItemAt(0)?.text?.isNotEmpty() == true
         AlertDialog(
             onDismissRequest = { dialogOpen = false; jsonInput = "" },
             title = { Text("Вставить JSON") },
             text = {
-                TextField(
+                OutlinedTextField(
                     value = jsonInput,
                     onValueChange = { jsonInput = it },
                     modifier = Modifier.fillMaxWidth(),

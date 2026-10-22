@@ -4,8 +4,6 @@ import com.grandmenvpn.app.parser.ParserRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.dispatchers.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -16,12 +14,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.nio.charset.Charsets
 import java.time.Duration
 
-/**
- * Найденный рабочий сервер.
- */
 data class FoundServer(
     val protocol: String,
     val host: String,
@@ -46,10 +40,6 @@ object ServerScanner {
     private const val IP_CHECK_HOST = "ipapi.co"
     private const val IP_CHECK_PORT = 80
 
-    /**
-     * Сканирует все источники и возвращает ВСЕ рабочие серверы (не топ-N).
-     * Этапы: скачивание -> парсинг -> дедупликация -> TCP-пинг -> проверка реального IP через SOCKS5.
-     */
     suspend fun scan(): List<FoundServer> = withContext(Dispatchers.Default) {
         val raw = downloadAll()
         val parsed = parseAll(raw)
@@ -57,8 +47,6 @@ object ServerScanner {
         val pinged = tcpPingAll(deduped)
         verifyIpAll(pinged)
     }
-
-    /* ---------- этап 1: скачивание источников (Semaphore 10) ---------- */
 
     private suspend fun downloadAll(): List<Pair<String, String>> {
         val sem = Semaphore(DOWNLOAD_CONCURRENCY)
@@ -82,8 +70,6 @@ object ServerScanner {
             response.body?.string() ?: ""
         }
     }
-
-    /* ---------- этап 2: парсинг через ParserRegistry ---------- */
 
     private suspend fun parseAll(raw: List<Pair<String, String>>): List<FoundServer> {
         val out = mutableListOf<FoundServer>()
@@ -132,12 +118,8 @@ object ServerScanner {
         return Triple(proto, host, port)
     }
 
-    /* ---------- этап 3: дедупликация ---------- */
-
     private suspend fun dedup(list: List<FoundServer>): List<FoundServer> =
         list.distinctBy { "${it.host}:${it.port}" }
-
-    /* ---------- этап 4: TCP-пинг (Semaphore 200) ---------- */
 
     private suspend fun tcpPing(host: String, port: Int): Long = withContext(Dispatchers.IO) {
         val start = System.currentTimeMillis()
@@ -161,8 +143,6 @@ object ServerScanner {
             }.map { it.await() }
         }
     }
-
-    /* ---------- этап 5: проверка реального IP через локальный SOCKS5 sing-box ---------- */
 
     private suspend fun verifyIpAll(list: List<FoundServer>): List<FoundServer> {
         val candidates = list.filter { it.pingMs > 0 }
@@ -192,10 +172,6 @@ object ServerScanner {
         } catch (_: Exception) { null }
     }
 
-    /**
-     * Соединяется через локальный SOCKS5 sing-box (127.0.0.1:1080), запрашивает IP у сервиса
-     * и возвращает увиденный прокси-IP. Если sing-box не поднят — null.
-     */
     private suspend fun fetchIpThroughLocalSocks5(): String? = withContext(Dispatchers.IO) {
         Socket().use { socket ->
             try {
@@ -203,17 +179,15 @@ object ServerScanner {
                 socket.soTimeout = TCP_TIMEOUT_MS
                 val out = socket.outputStream
                 val inn = socket.inputStream
-                // SOCKS5 приветствие: без аутентификации
                 out.write(byteArrayOf(0x05, 0x01, 0x00)); out.flush()
                 if (inn.read() != 0x05 || inn.read() != 0x00) return@use null
-                // CONNECT -> сервис проверки IP
                 val addr = IP_CHECK_HOST.toByteArray(Charsets.UTF_8)
                 out.write(byteArrayOf(0x05, 0x01, 0x00, 0x03))
                 out.write(addr.size); out.write(addr)
                 out.write((IP_CHECK_PORT shr 8).toInt()); out.write((IP_CHECK_PORT and 0xFF).toInt())
                 out.flush()
                 if (inn.read() != 0x05 || inn.read() != 0x00) return@use null
-                inn.read() // reserved
+                inn.read()
                 val atyp = inn.read()
                 when (atyp) {
                     0x01 -> repeat(4) { inn.read() }
@@ -221,8 +195,7 @@ object ServerScanner {
                     0x04 -> repeat(16) { inn.read() }
                     else -> return@use null
                 }
-                repeat(2) { inn.read() } // порт
-                // HTTP GET через прокси
+                repeat(2) { inn.read() }
                 val req = "GET /ip HTTP/1.1\r\nHost: $IP_CHECK_HOST\r\nConnection: close\r\n\r\n"
                 out.write(req.toByteArray(Charsets.UTF_8)); out.flush()
                 val buf = StringBuilder()

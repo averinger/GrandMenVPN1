@@ -3,26 +3,11 @@ package com.grandmenvpn.app.ui.screens
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import android.content.Context
 import android.content.pm.PackageManager
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material3.*
-import androidx.compose.material3.tokens.ExperimentalMaterial3Api
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,7 +15,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.grandmenvpn.app.config.SplitRouteManager
 import com.grandmenvpn.app.config.WhitelistManager
 import com.grandmenvpn.app.vpn.VpnManager
@@ -49,7 +33,7 @@ fun SettingsScreen(
     var autoSplit by remember { mutableStateOf(false) }
     var killSwitch by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(true) }
-    var dnsMode by remember { mutableStateOf(0) } // 0=Auto, 1=Custom, 2=System
+    var dnsMode by remember { mutableStateOf(0) }
     var customDns by remember { mutableStateOf("") }
     var mtu by remember { mutableStateOf("1400") }
     var connectTimeout by remember { mutableStateOf("10") }
@@ -60,7 +44,7 @@ fun SettingsScreen(
             autoSplit = splitRouteManager.isAutoSplitEnabled(context)
             killSwitch = splitRouteManager.isKillSwitchEnabled(context)
             try {
-                versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
             } catch (e: PackageManager.NameNotFoundException) {
                 versionName = "1.0"
             }
@@ -71,7 +55,6 @@ fun SettingsScreen(
         Text(text = "Настройки", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(8.dp))
 
-        // VPN Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -90,7 +73,7 @@ fun SettingsScreen(
                     }
                     OutlinedTextField(
                         value = mtu,
-                        onValueChange = { mtu = it.filter { it.isDigit() } },
+                        onValueChange = { mtu = it.filter { c -> c.isDigit() } },
                         modifier = Modifier.width(120.dp),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
@@ -109,7 +92,7 @@ fun SettingsScreen(
                     }
                     OutlinedTextField(
                         value = connectTimeout,
-                        onValueChange = { connectTimeout = it.filter { it.isDigit() } },
+                        onValueChange = { connectTimeout = it.filter { c -> c.isDigit() } },
                         modifier = Modifier.width(120.dp),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
@@ -120,7 +103,6 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // DNS Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -162,7 +144,6 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Routing Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -213,18 +194,17 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
-                        .clickable { /* TODO: navigate to whitelist */ },
+                        .clickable { /* TODO */ },
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text("Белый список доменов", style = MaterialTheme.typography.bodyMedium)
-                    Icon(ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // UI Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -248,7 +228,6 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // About
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -283,7 +262,6 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Danger zone
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF2A1A1A))
@@ -298,7 +276,7 @@ fun SettingsScreen(
                         Text("Удалить серверы, белый список и настройки", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    TextButton(onClick = { /* TODO: clear all data */ }) {
+                    TextButton(onClick = { /* TODO */ }) {
                         Text("ОЧИСТИТЬ", style = TextStyle(color = Color(0xFFFF8A80), fontWeight = FontWeight.Bold))
                     }
                 }

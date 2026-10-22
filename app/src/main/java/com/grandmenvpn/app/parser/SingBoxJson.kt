@@ -8,7 +8,6 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.text.Charsets
 import java.net.URLDecoder
-import java.nio.charset.Charsets
 
 internal val json = Json {
     prettyPrint = false
@@ -16,10 +15,6 @@ internal val json = Json {
     encodeDefaults = true
 }
 
-/**
- * Разбирает query-строку URI в карту. Значения декодируются,
- * повторяющиеся ключи берутся по первому вхождению.
- */
 fun queryParams(rawQuery: String?): Map<String, String> {
     if (rawQuery.isNullOrEmpty()) return emptyMap()
     val out = LinkedHashMap<String, String>()
@@ -46,12 +41,10 @@ fun queryParam(params: Map<String, String>, key: String, default: String = ""): 
 fun queryParamBool(params: Map<String, String>, key: String): Boolean =
     queryParam(params, key).lowercase() in setOf("1", "true", "yes", "on")
 
-/** Собирает конфиг sing-box с одним outbound. */
 fun outboundJson(outbound: JsonObject): String = buildJsonObject {
     put("outbounds", buildJsonArray { add(outbound) })
 }.let { json.encodeToString(JsonObject.serializer(), it) }
 
-/** Собирает конфиг sing-box с одним endpoint (sing-box 1.11+). */
 fun endpointJson(endpoint: JsonObject): String = buildJsonObject {
     put("endpoints", buildJsonArray { add(endpoint) })
 }.let { json.encodeToString(JsonObject.serializer(), it) }

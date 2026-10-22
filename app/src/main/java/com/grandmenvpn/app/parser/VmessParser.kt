@@ -7,16 +7,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import kotlin.text.Charsets
-import java.net.URI
-import java.nio.charset.Charsets
 import java.util.Base64
 
-// Import internal json instance from SingBoxJson.kt
-import com.grandmenvpn.app.parser.json
-
-/**
- * vmess://BASE64(JSON) — формат v2rayN.
- */
 class VmessParser : ConfigParser {
 
     override fun supports(input: String): Boolean = input.trim().lowercase().startsWith("vmess://")

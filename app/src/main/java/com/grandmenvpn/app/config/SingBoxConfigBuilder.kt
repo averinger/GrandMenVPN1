@@ -7,18 +7,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.parseToJsonElement
 import kotlinx.serialization.json.put
 
 /**
  * Сборщик финального конфига sing-box 1.11+ со сплит-туннелингом.
- *
- * Порядок правил route (первое совпадение выигрывает):
- *   1. Whitelist (домены из whitelist.txt) -> direct
- *   2. RU-суффиксы (.ru, .рф, .su) -> direct
- *   3. RU-домены (список 50+) -> direct
- *   4. geoip-ru.srs (rule_set) -> direct
- *   5. Остальное -> через прокси
  */
 object SingBoxConfigBuilder {
     private val json = Json { ignoreUnknownKeys = true }
@@ -26,7 +18,6 @@ object SingBoxConfigBuilder {
     const val PROXY_TAG = "proxy"
     const val DIRECT_TAG = "direct"
 
-    /** RU-домены для быстрого локального сплита без geoip-файла (55 шт.). */
     val defaultRuDomains = listOf(
         "yandex.ru", "ya.ru", "yandex.by", "yandex.kz", "yandex.ua",
         "mail.ru", "list.ru", "bk.ru", "inbox.ru",
@@ -63,7 +54,7 @@ object SingBoxConfigBuilder {
             if (ruSuffixes.isNotEmpty()) add(rule(DIRECT_TAG, domainSuffix = ruSuffixes))
             if (ruDomains.isNotEmpty()) add(rule(DIRECT_TAG, domain = ruDomains))
             if (useGeoipRu) add(rule(DIRECT_TAG, ruleSet = "geoip-ru"))
-            add(rule(PROXY_TAG)) // всё остальное -> через прокси
+            add(rule(PROXY_TAG))
         }
 
         val ruleSets = buildJsonArray {

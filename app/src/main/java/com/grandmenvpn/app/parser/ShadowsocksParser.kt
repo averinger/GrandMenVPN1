@@ -4,16 +4,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.text.Charsets
-import java.nio.charset.Charsets
 import java.util.Base64
 
-import com.grandmenvpn.app.parser.decode
-import com.grandmenvpn.app.parser.outboundJson
-import com.grandmenvpn.app.parser.queryParams
-
-/**
- * ss://BASE64(method:pass@host:port) и ss://method:pass@host:port
- */
 class ShadowsocksParser : ConfigParser {
 
     override fun supports(input: String): Boolean = input.trim().lowercase().startsWith("ss://")
@@ -22,9 +14,6 @@ class ShadowsocksParser : ConfigParser {
         var body = input.trim().substringAfter("ss://").substringBefore('#')
         if (body.isEmpty()) return null
 
-        // старый формат: весь блок method:pass@host:port закодирован в base64.
-        // ВАЖНО: mime-декодер молча выбрасывает невалидные символы, поэтому
-        // принимаем результат только если в нём есть '@' — иначе это не base64.
         if (!body.substringBefore('?').contains('@')) {
             val decoded = runCatching { String(Base64.getMimeDecoder().decode(body), Charsets.UTF_8) }
                 .getOrNull()
@@ -34,7 +23,7 @@ class ShadowsocksParser : ConfigParser {
         }
 
         val query = body.substringAfter('?', "")
-        if (queryParams(query).containsKey("plugin")) return null   // плагины не поддерживаем
+        if (queryParams(query).containsKey("plugin")) return null
         val bare = body.substringBefore('?')
 
         val method: String
@@ -44,7 +33,6 @@ class ShadowsocksParser : ConfigParser {
 
         val at = bare.lastIndexOf('@')
         if (at > 0) {
-            // ss://method:pass@host:port  (или BASE64(method:pass)@host:port)
             val userInfo = bare.substring(0, at)
             val hostPort = bare.substring(at + 1)
             val hp = splitHostPort(hostPort) ?: return null
@@ -55,7 +43,6 @@ class ShadowsocksParser : ConfigParser {
             if (colon <= 0) return null
             val rawMethod = userInfo.substring(0, colon)
             val rawPass = userInfo.substring(colon + 1)
-            // userinfo может быть base64 — тогда без двоеточия
             if (rawPass.isEmpty()) {
                 val dec = runCatching {
                     String(Base64.getMimeDecoder().decode(rawMethod), Charsets.UTF_8)
@@ -69,7 +56,6 @@ class ShadowsocksParser : ConfigParser {
                 password = decode(rawPass)
             }
         } else {
-            // ss://method:pass:host:port — без '@'
             val parts = bare.split(':')
             if (parts.size < 4) return null
             port = parts[parts.size - 1].toIntOrNull() ?: return null
