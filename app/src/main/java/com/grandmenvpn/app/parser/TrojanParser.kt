@@ -1,7 +1,7 @@
 package com.grandmenvpn.app.parser
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URI
 
@@ -30,11 +30,11 @@ class TrojanParser : ConfigParser {
         val sni = queryParam(params, "sni").ifEmpty { host }
 
         val outbound = buildJsonObject {
-            put("type", jsonPrimitive("trojan"))
-            put("tag", jsonPrimitive("proxy"))
-            put("server", jsonPrimitive(host))
+            put("type", JsonPrimitive("trojan"))
+            put("tag", JsonPrimitive("proxy"))
+            put("server", JsonPrimitive(host))
             put("server_port", port)
-            put("password", jsonPrimitive(password))
+            put("password", JsonPrimitive(password))
 
             if (queryParam(params, "security", "tls") != "none") {
                 put("tls", tlsBlock(params, host))

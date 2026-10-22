@@ -1,7 +1,7 @@
 package com.grandmenvpn.app.parser
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URI
 
@@ -38,12 +38,12 @@ class TuicParser : ConfigParser {
         val params = queryParams(uri.rawQuery)
 
         val outbound = buildJsonObject {
-            put("type", jsonPrimitive("tuic"))
-            put("tag", jsonPrimitive("proxy"))
-            put("server", jsonPrimitive(host))
+            put("type", JsonPrimitive("tuic"))
+            put("tag", JsonPrimitive("proxy"))
+            put("server", JsonPrimitive(host))
             put("server_port", port)
-            put("uuid", jsonPrimitive(uuid))
-            put("password", jsonPrimitive(password))
+            put("uuid", JsonPrimitive(uuid))
+            put("password", JsonPrimitive(password))
             put("tls", tlsBlock(params, host))
 
             queryParam(params, "congestion_control").takeIf { it.isNotEmpty() }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -24,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -42,7 +42,6 @@ import com.grandmenvpn.app.ui.theme.GreenAccent
 import com.grandmenvpn.app.ui.theme.SurfaceDark
 import com.grandmenvpn.app.ui.theme.TextSecondaryDark
 import com.grandmenvpn.app.vpn.VpnManager
-import androidx.compose.material.icons.filled.Settings
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,6 +93,7 @@ fun GrandMenApp() {
             }
         }
     ) { innerPadding ->
+        val context = LocalContext.current
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -101,23 +101,23 @@ fun GrandMenApp() {
         ) {
             when (currentTab) {
                 AppTab.Home -> HomeScreen(
-                    vpnManager = remember { VpnManager(LocalContext.current) },
+                    vpnManager = remember { VpnManager(context) },
                     serverScanner = ServerScanner
                 )
                 AppTab.Manual -> ManualInputScreen(
-                    manager = remember { CustomServerManager(LocalContext.current) }
+                    manager = remember { CustomServerManager(context) }
                 )
                 AppTab.Servers -> CustomServersScreen(
-                    manager = remember { CustomServerManager(LocalContext.current) }
+                    manager = remember { CustomServerManager(context) }
                 )
                 AppTab.NoVpn -> WhitelistScreen(
-                    whitelistManager = remember { WhitelistManager(LocalContext.current) },
+                    whitelistManager = remember { WhitelistManager(context) },
                     splitRouteManager = SplitRouteManager
                 )
                 AppTab.Settings -> SettingsScreen(
-                    whitelistManager = remember { WhitelistManager(LocalContext.current) },
+                    whitelistManager = remember { WhitelistManager(context) },
                     splitRouteManager = SplitRouteManager,
-                    vpnManager = remember { VpnManager(LocalContext.current) }
+                    vpnManager = remember { VpnManager(context) }
                 )
             }
         }

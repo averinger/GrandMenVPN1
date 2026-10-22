@@ -160,35 +160,39 @@ fun SettingsScreen(
                 Text("Маршрутизация", style = MaterialTheme.typography.titleMedium)
                 Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(
                         checked = autoSplit,
                         onCheckedChange = { v ->
                             autoSplit = v
                             scope.launch { splitRouteManager.setAutoSplitEnabled(context, v) }
                         }
-                    ) {
-                        Column {
-                            Text("Авто-сплит RU-трафика", style = MaterialTheme.typography.bodyMedium)
-                            Text("Российские подсети идут минуя VPN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    )
+                    Column {
+                        Text("Авто-сплит RU-трафика", style = MaterialTheme.typography.bodyMedium)
+                        Text("Российские подсети идут минуя VPN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(
                         checked = killSwitch,
                         onCheckedChange = { v ->
                             killSwitch = v
                             scope.launch { splitRouteManager.setKillSwitchEnabled(context, v) }
                         }
-                    ) {
-                        Column {
-                            Text("Kill Switch", style = MaterialTheme.typography.bodyMedium)
-                            Text("Блокировать интернет при разрыве VPN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    )
+                    Column {
+                        Text("Kill Switch", style = MaterialTheme.typography.bodyMedium)
+                        Text("Блокировать интернет при разрыве VPN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -218,11 +222,15 @@ fun SettingsScreen(
                 Text("Интерфейс", style = MaterialTheme.typography.titleMedium)
                 Divider(modifier = Modifier.padding(vertical = 12.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(
                         checked = showNotifications,
                         onCheckedChange = { showNotifications = it }
-                    ) { Text("Показывать уведомление VPN") }
+                    )
+                    Text("Показывать уведомление VPN")
                 }
             }
         }

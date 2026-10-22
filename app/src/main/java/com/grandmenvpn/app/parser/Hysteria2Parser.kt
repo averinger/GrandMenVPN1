@@ -1,7 +1,7 @@
 package com.grandmenvpn.app.parser
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.URI
@@ -38,11 +38,11 @@ class Hysteria2Parser : ConfigParser {
         }
 
         val outbound = buildJsonObject {
-            put("type", jsonPrimitive("hysteria2"))
-            put("tag", jsonPrimitive("proxy"))
-            put("server", jsonPrimitive(host))
+            put("type", JsonPrimitive("hysteria2"))
+            put("tag", JsonPrimitive("proxy"))
+            put("server", JsonPrimitive(host))
             put("server_port", port)
-            put("password", jsonPrimitive(password))
+            put("password", JsonPrimitive(password))
             put("tls", tlsBlock(params, host))
 
             queryParam(params, "obfs").takeIf { it.isNotEmpty() }?.let { obfs ->

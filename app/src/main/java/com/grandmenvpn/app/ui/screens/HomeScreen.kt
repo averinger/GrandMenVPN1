@@ -1,7 +1,7 @@
 package com.grandmenvpn.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clip
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -222,7 +222,7 @@ fun HomeScreen(
                 enabled = !scanRunning && !connected,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {

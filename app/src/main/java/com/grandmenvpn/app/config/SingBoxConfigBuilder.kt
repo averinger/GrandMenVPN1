@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.parseToJsonElement
 import kotlinx.serialization.json.put
 
@@ -55,7 +55,7 @@ object SingBoxConfigBuilder {
 
         val outbounds = buildJsonArray {
             add(proxyOutbound)
-            add(buildJsonObject { put("type", jsonPrimitive("direct")); put("tag", jsonPrimitive(DIRECT_TAG)) })
+            add(buildJsonObject { put("type", JsonPrimitive("direct")); put("tag", JsonPrimitive(DIRECT_TAG)) })
         }
 
         val rules = buildJsonArray {
@@ -68,10 +68,10 @@ object SingBoxConfigBuilder {
 
         val ruleSets = buildJsonArray {
             if (useGeoipRu) add(buildJsonObject {
-                put("tag", jsonPrimitive("geoip-ru"))
-                put("type", jsonPrimitive("remote"))
-                put("format", jsonPrimitive("srs"))
-                put("url", jsonPrimitive("https://raw.githubusercontent.com/SagerNet/sing-geosite/master/rule-set/geoip-ru.srs"))
+                put("tag", JsonPrimitive("geoip-ru"))
+                put("type", JsonPrimitive("remote"))
+                put("format", JsonPrimitive("srs"))
+                put("url", JsonPrimitive("https://raw.githubusercontent.com/SagerNet/sing-geosite/master/rule-set/geoip-ru.srs"))
             })
         }
 
@@ -84,7 +84,7 @@ object SingBoxConfigBuilder {
         return json.encodeToString(JsonObject.serializer(), config)
     }
 
-    private fun extractProxyOutbound(proxyOutboundJson: String): JsonObject {
+    private fun extractProxyOutbound(proxyOutboundJson: String): JsonElement {
         val root = json.parseToJsonElement(proxyOutboundJson)
         return when (root) {
             is JsonObject -> (root["outbounds"] as? JsonArray)
@@ -101,9 +101,9 @@ object SingBoxConfigBuilder {
         domainSuffix: List<String>? = null,
         ruleSet: String? = null
     ) = buildJsonObject {
-        put("outbound", jsonPrimitive(outbound))
-        domain?.let { put("domain", buildJsonArray { it.forEach { add(jsonPrimitive(it)) } }) }
-        domainSuffix?.let { put("domain_suffix", buildJsonArray { it.forEach { add(jsonPrimitive(it)) } }) }
-        ruleSet?.let { put("rule_set", jsonPrimitive(it)) }
+        put("outbound", JsonPrimitive(outbound))
+        domain?.let { put("domain", buildJsonArray { it.forEach { add(JsonPrimitive(it)) } }) }
+        domainSuffix?.let { put("domain_suffix", buildJsonArray { it.forEach { add(JsonPrimitive(it)) } }) }
+        ruleSet?.let { put("rule_set", JsonPrimitive(it)) }
     }
 }

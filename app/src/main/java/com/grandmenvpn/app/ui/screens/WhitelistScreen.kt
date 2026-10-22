@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.tokens.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -77,24 +78,32 @@ fun WhitelistScreen(
 
         Text(text = "Настройки маршрутизации", style = MaterialTheme.typography.titleMedium)
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Checkbox(
                 checked = autoSplit,
                 onCheckedChange = { v ->
                     autoSplit = v
                     scope.launch { splitRouteManager.setAutoSplitEnabled(context, v) }
                 }
-            ) { Text("Авто-сплит RU-трафика") }
+            )
+            Text("Авто-сплит RU-трафика")
         }
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Checkbox(
                 checked = killSwitch,
                 onCheckedChange = { v ->
                     killSwitch = v
                     scope.launch { splitRouteManager.setKillSwitchEnabled(context, v) }
                 }
-            ) { Text("Kill Switch (безопасный разрыв)") }
+            )
+            Text("Kill Switch (безопасный разрыв)")
         }
     }
 }

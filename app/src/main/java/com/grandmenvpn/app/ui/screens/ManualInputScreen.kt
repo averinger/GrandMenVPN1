@@ -30,7 +30,7 @@ fun ManualInputScreen(
     var input by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent("application/json")) { uri: Uri? ->
         uri?.let { scope.launch(Dispatchers.IO) {
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 input = stream.bufferedReader().readText()

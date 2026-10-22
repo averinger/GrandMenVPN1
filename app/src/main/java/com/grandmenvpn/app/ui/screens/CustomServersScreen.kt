@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,12 +42,12 @@ fun CustomServersScreen(
     val context = LocalContext.current
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val scope = rememberCoroutineScope()
-    val servers by remember { mutableStateListOf<CustomServer>() }
+    val servers: MutableList<CustomServer> by remember { mutableStateListOf() }
     var dialogOpen by remember { mutableStateOf(false) }
     var jsonInput by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent("application/json")) { uri: Uri? ->
         uri?.let { scope.launch { importUri(it) } }
     }
 
@@ -136,14 +137,11 @@ fun CustomServersScreen(
                     maxLines = 8
                 )
             },
-            confirmButton = { TextButton(onClick = { importJson(jsonInput) }) { Text("Применить") } },
-            dismissButton = { TextButton(onClick = { dialogOpen = false; jsonInput = "" }) { Text("Отмена") } },
-            secondaryButton = {
-                if (hasClip) {
-                    TextButton(onClick = { jsonInput = clipboard.primaryClip!!.getItemAt(0).text.toString() }) {
-                        Text("Из буфера")
-                    }
-                }
+            confirmButton = {
+                TextButton(onClick = { importJson(jsonInput) }) { Text("Применить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { dialogOpen = false; jsonInput = "" }) { Text("Отмена") }
             }
         )
     }
