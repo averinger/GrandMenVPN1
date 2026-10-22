@@ -63,23 +63,47 @@ fun HomeScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            // Пользователь нажал "ОК" в системном окне, запускаем реальный VPN
             val s = selectedProfile.value
             if (s != null) {
-                scope.launch {
-                    val ok = vpnManager.start(s.outboundJson)
-                    if (ok) {
-                        connected.value = true
-                        status.value = "Подключён к ${s.host}"
-                        serverIp.value = "Получение IP..."
-                        serverIp.value = fetchPublicIp() ?: s.host
-                    } else {
-                        status.value = "Ошибка запуска VPN"
-                    }
-                }
+                scope.launch { performVpnConnection(s) }
             }
         } else {
             status.value = "В разрешении на VPN отказано"
+            com.grandmenvpn.app.utils.DebugLogger.error("VPN", "Пользователь отклонил разрешение VPN")
+        }
+    }
+
+    suspend fun performVpnConnection(s: FoundServer) {
+        status.value = "Проверка IP до подключения..."
+        com.grandmenvpn.app.utils.DebugLogger.log("VPN", "Начало подключения к ${s.host}:${s.port}")
+
+        val ipBefore = fetchPublicIp()
+        com.grandmenvpn.app.utils.DebugLogger.log("VPN", "IP до подключения: $ipBefore")
+
+        status.value = "Запуск VPN..."
+        val ok = vpnManager.start(s.outboundJson)
+
+        if (ok) {
+            status.value = "Ожидание смены IP..."
+            kotlinx.coroutines.delay(3000)
+
+            val ipAfter = fetchPublicIp()
+            com.grandmenvpn.app.utils.DebugLogger.log("VPN", "IP после подключения: $ipAfter")
+
+            if (ipBefore != null && ipBefore == ipAfter) {
+                com.grandmenvpn.app.utils.DebugLogger.error("VPN", "ОШИБКА: IP не изменился! Трафик не идет через VPN.")
+                status.value = "Ошибка: IP не изменился (VPN не работает)"
+                connected.value = false
+                vpnManager.stop()
+            } else {
+                com.grandmenvpn.app.utils.DebugLogger.log("VPN", "Успешное подключение! Новый IP: $ipAfter")
+                connected.value = true
+                status.value = "Подключён к ${s.host}"
+                serverIp.value = ipAfter
+            }
+        } else {
+            com.grandmenvpn.app.utils.DebugLogger.error("VPN", "vpnManager.start() вернул false")
+            status.value = "Ошибка запуска VPN"
         }
     }
 
@@ -111,6 +135,21 @@ fun HomeScreen(
                 )
             }
             servers.addAll(mappedServers)
+            val testConfig = """
+                {
+                  "outbounds": [
+                    {
+                      "type": "shadowsocks",
+                      "tag": "proxy",
+                      "server": "1.1.1.1",
+                      "server_port": 8388,
+                      "method": "aes-256-gcm",
+                      "password": "test"
+                    }
+                  ]
+                }
+            """.trimIndent()
+            servers.add(FoundServer("Test", "1.1.1.1", 8388, 50, "System", "Test Server", testConfig))
         } catch (e: Exception) { }
     }
 
@@ -159,11 +198,12 @@ fun HomeScreen(
 
     fun connect() {
         if (connected.value) {
-            scope.launch { // <--- Оборачиваем в корутину
+            scope.launch {
                 vpnManager.stop()
                 connected.value = false
                 serverIp.value = null
                 status.value = "Готов к подключению"
+                com.grandmenvpn.app.utils.DebugLogger.log("VPN", "VPN отключен пользователем")
             }
         } else {
             val s = selectedProfile.value
@@ -173,7 +213,7 @@ fun HomeScreen(
                     status.value = "Запрос разрешения на VPN..."
                     vpnPermissionLauncher.launch(intent)
                 } else {
-                    executeConnection(s)
+                    scope.launch { performVpnConnection(s) }
                 }
             } else {
                 status.value = "Сначала выберите сервер из списка"
@@ -188,7 +228,7 @@ fun HomeScreen(
             status.value = "Запрос разрешения на VPN..."
             vpnPermissionLauncher.launch(intent)
         } else {
-            executeConnection(s)
+            scope.launch { performVpnConnection(s) }
         }
     }
 
@@ -283,7 +323,7 @@ fun HomeScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (connected.value) "GMVPN\nDisconnect" else "GMVPN\nConnect",
+                            text = if (connected.value) "GMVPN\nConnected" else "GMVPN\nConnect",
                             color = Color(0xFF121212),
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
