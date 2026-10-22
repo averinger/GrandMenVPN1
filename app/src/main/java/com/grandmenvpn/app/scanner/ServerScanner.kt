@@ -34,7 +34,7 @@ object ServerScanner {
 
     private const val DOWNLOAD_CONCURRENCY = 10
     private const val TCP_CONCURRENCY = 200
-    private const val TCP_TIMEOUT_MS = 4000
+    private const val TCP_TIMEOUT_MS = 8000
     private const val SOCKS5_HOST = "127.0.0.1"
     private const val SOCKS5_PORT = 1080
     private const val IP_CHECK_HOST = "ipapi.co"
@@ -45,7 +45,7 @@ object ServerScanner {
         val parsed = parseAll(raw)
         val deduped = dedup(parsed)
         val pinged = tcpPingAll(deduped)
-        verifyIpAll(pinged)
+        return@withContext pinged
     }
 
     private suspend fun downloadAll(): List<Pair<String, String>> {

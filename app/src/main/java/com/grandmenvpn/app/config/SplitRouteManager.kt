@@ -22,7 +22,7 @@ object SplitRouteManager {
 
     suspend fun isAutoSplitEnabled(context: Context): Boolean {
         val prefs = context.dataStore.data.first()
-        return prefs[AUTO_SPLIT] ?: false
+        return prefs[AUTO_SPLIT] ?: true // было false
     }
 
     suspend fun setAutoSplitEnabled(context: Context, enabled: Boolean) {
@@ -31,7 +31,7 @@ object SplitRouteManager {
 
     suspend fun isKillSwitchEnabled(context: Context): Boolean {
         val prefs = context.dataStore.data.first()
-        return prefs[KILL_SWITCH] ?: false
+        return prefs[KILL_SWITCH] ?: true // было false
     }
 
     suspend fun setKillSwitchEnabled(context: Context, enabled: Boolean) {

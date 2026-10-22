@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,8 +116,12 @@ fun HomeScreen(
                 val ok = vpnManager.start(s.outboundJson)
                 if (ok) {
                     connected.value = true
-                    serverIp.value = s.host
                     status.value = "Подключён к ${s.host}"
+
+                    // Добавляем получение реального IP
+                    serverIp.value = "Получение IP..."
+                    val realIp = fetchPublicIp()
+                    serverIp.value = realIp ?: s.host
                 } else {
                     status.value = "Ошибка подключения"
                 }
@@ -132,8 +137,12 @@ fun HomeScreen(
         val ok = vpnManager.start(s.outboundJson)
         if (ok) {
             connected.value = true
-            serverIp.value = s.host
             status.value = "Подключён к ${s.host}"
+
+            // Добавляем получение реального IP
+            serverIp.value = "Получение IP..."
+            val realIp = fetchPublicIp()
+            serverIp.value = realIp ?: s.host
         } else {
             connected.value = false
             status.value = "Ошибка подключения"
@@ -233,25 +242,27 @@ fun HomeScreen(
                             .clickable { connect() }
                             .align(Alignment.Center)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PowerOff,
-                            contentDescription = if (connected.value) "Отключить" else "Подключить",
-                            tint = Color(0xFF121212),
-                            modifier = Modifier.align(Alignment.Center)
+                        Text(
+                            text = if (connected.value) "GMVPN Disconnect" else "GMVPN Connect",
+                            color = Color(0xFF121212),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.align(Alignment.Center).padding(16.dp)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                serverIp.value?.let { ip ->
-                    Text(
-                        text = "IP: $ip",
-                        style = TextStyle(fontSize = 18.sp, color = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+            serverIp.value?.let { ip ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Ваш IP: $ip",
+                    style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
 
                 Button(
                     onClick = { scan() },
@@ -316,5 +327,18 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+suspend fun fetchPublicIp(): String? = withContext(Dispatchers.IO) {
+    try {
+        val url = java.net.URL("https://api.ipify.org")
+        val connection = url.openConnection() as java.net.HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout = 5000
+        connection.readTimeout = 5000
+        connection.inputStream.bufferedReader().use { it.readText() }
+    } catch (e: Exception) {
+        null
     }
 }

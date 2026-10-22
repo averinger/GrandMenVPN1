@@ -38,6 +38,7 @@ fun SettingsScreen(
     var mtu by remember { mutableStateOf("1400") }
     var connectTimeout by remember { mutableStateOf("10") }
     var versionName by remember { mutableStateOf("1.0") }
+    var showInfoDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -282,5 +283,31 @@ fun SettingsScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { showInfoDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Text("Инструкция по использованию", color = MaterialTheme.colorScheme.onPrimary)
+        }
+    }
+
+    if (showInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showInfoDialog = false },
+            title = { Text("Как пользоваться GMVPN") },
+            text = {
+                Text("1. Перейдите на главный экран.\n" +
+                     "2. Нажмите 'Сканировать серверы' и подождите.\n" +
+                     "3. Выберите сервер из списка (нажмите 'Подключить' на сервере).\n" +
+                     "4. Нажмите большую кнопку 'GMVPN Connect'.\n" +
+                     "5. Приятного пользования!")
+            },
+            confirmButton = {
+                TextButton(onClick = { showInfoDialog = false }) { Text("Понятно") }
+            }
+        )
     }
 }
