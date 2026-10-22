@@ -36,7 +36,17 @@ fun CustomServersScreen(
     var status by remember { mutableStateOf<String?>(null) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { scope.launch { importUri(context, it) } }
+        uri?.let {
+            scope.launch(Dispatchers.IO) {
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    val text = stream.bufferedReader().readText()
+                    withContext(Dispatchers.Main) {
+                        jsonInput = text
+                        dialogOpen = true
+                    }
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -58,18 +68,6 @@ fun CustomServersScreen(
         }
         dialogOpen = false
         jsonInput = ""
-    }
-
-    fun importUri(ctx: Context, uri: Uri) {
-        scope.launch(Dispatchers.IO) {
-            ctx.contentResolver.openInputStream(uri)?.use { input ->
-                val text = input.bufferedReader().readText()
-                withContext(Dispatchers.Main) {
-                    jsonInput = text
-                    dialogOpen = true
-                }
-            }
-        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

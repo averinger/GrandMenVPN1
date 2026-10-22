@@ -14,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import com.grandmenvpn.app.config.SplitRouteManager
 import com.grandmenvpn.app.config.WhitelistManager
 import kotlinx.coroutines.launch
+// ВАЖНО: Эти два импорта решают ошибку Property delegate
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,7 +26,8 @@ fun WhitelistScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var domains by remember { mutableStateListOf<String>() }
+    // Явно указываем тип SnapshotStateList<String>
+    val domains = remember { mutableStateListOf<String>() } 
     var newDomain by remember { mutableStateOf("") }
     var autoSplit by remember { mutableStateOf(false) }
     var killSwitch by remember { mutableStateOf(false) }
@@ -34,9 +38,9 @@ fun WhitelistScreen(
         killSwitch = splitRouteManager.isKillSwitchEnabled(context)
     }
 
-    fun add() {
+    fun addDomainToList() {
         val d = newDomain.trim().lowercase()
-        if (d.isBlank() || d in domains) return
+        if (d.isBlank() || domains.contains(d)) return
         scope.launch {
             whitelistManager.addDomain(d)
             domains.add(d)
@@ -44,7 +48,7 @@ fun WhitelistScreen(
         }
     }
 
-    fun remove(d: String) = scope.launch {
+    fun removeDomainFromList(d: String) = scope.launch {
         whitelistManager.removeDomain(d)
         domains.remove(d)
     }
@@ -59,16 +63,18 @@ fun WhitelistScreen(
                 label = { Text("Домен") },
                 modifier = Modifier.weight(1f)
             )
-            Button(onClick = { add() }) { Text("Добавить") }
+            Button(onClick = { addDomainToList() }) { Text("Добавить") }
         }
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            items(domains, key = { it }) { d ->
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    Text(text = d, style = MaterialTheme.typography.bodyMedium)
+            // Указываем items = domains для однозначности
+            items(items = domains, key = { it }) { domainItem ->
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Принудительно .toString() на всякий случай
+                    Text(text = domainItem.toString(), style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = { remove(d) }) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
+                    IconButton(onClick = { removeDomainFromList(domainItem) }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Удалить")
                     }
                 }
                 Divider()
