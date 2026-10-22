@@ -1,15 +1,6 @@
 package com.grandmenvpn.app.ui.screens
 
-// Явные импорты для рантайма, чтобы избежать конфликта Ambiguity
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-
+import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -46,29 +37,30 @@ fun HomeScreen(
     serverScanner: ServerScanner
 ) {
     val scope = rememberCoroutineScope()
-    var connected by remember { mutableStateOf(false) }
-    var seconds by remember { mutableStateOf(0) }
-    var serverIp by remember { mutableStateOf<String?>(null) }
-    var status by remember { mutableStateOf("Готов к подключению") }
-    var servers by remember { mutableStateListOf<FoundServer>() }
-    var scanRunning by remember { mutableStateOf(false) }
-    var selectedProfile by remember { mutableStateOf<FoundServer?>(null) }
+    
+    // УБРАЛИ 'by'. Теперь это просто объекты State, и мы дергаем .value
+    val connected = remember { mutableStateOf(false) }
+    val seconds = remember { mutableStateOf(0) }
+    val serverIp = remember { mutableStateOf<String?>(null) }
+    val status = remember { mutableStateOf("Готов к подключению") }
+    val servers = remember { mutableStateListOf<FoundServer>() }
+    val scanRunning = remember { mutableStateOf(false) }
+    val selectedProfile = remember { mutableStateOf<FoundServer?>(null) }
 
-    // Используем обычный mutableStateOf для Float, чтобы избежать проблем с делегатами
-    var pulseScale by remember { mutableStateOf(1f) }
-    var pulseAlpha by remember { mutableStateOf(0f) }
+    val pulseScale = remember { mutableStateOf(1f) }
+    val pulseAlpha = remember { mutableStateOf(0f) }
 
-    LaunchedEffect(connected) {
-        pulseScale = 1f
-        pulseAlpha = 0f
-        if (connected) {
+    LaunchedEffect(connected.value) {
+        pulseScale.value = 1f
+        pulseAlpha.value = 0f
+        if (connected.value) {
             launch {
                 while (true) {
                     val start = System.currentTimeMillis()
                     while (System.currentTimeMillis() - start < 1500) {
                         val t = ((System.currentTimeMillis() - start) / 1500f).coerceAtMost(1f)
-                        pulseScale = 1f + t * 0.5f
-                        pulseAlpha = 0.4f * (1f - t)
+                        pulseScale.value = 1f + t * 0.5f
+                        pulseAlpha.value = 0.4f * (1f - t)
                         delay(16)
                     }
                 }
@@ -76,23 +68,23 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(connected) {
-        if (connected) {
+    LaunchedEffect(connected.value) {
+        if (connected.value) {
             launch {
-                while (connected) {
+                while (connected.value) {
                     delay(1000)
-                    if (connected) seconds++
+                    if (connected.value) seconds.value++
                 }
             }
         } else {
-            seconds = 0
+            seconds.value = 0
         }
     }
 
-    val timerText = "${seconds / 60}:${seconds % 60}".padStart(2, '0')
+    val timerText = "${seconds.value / 60}:${seconds.value % 60}".padStart(2, '0')
 
     val buttonBrush = Brush.linearGradient(
-        colors = if (connected)
+        colors = if (connected.value)
             listOf(Color(0xFFF44336), Color(0xFFB71C1C))
         else
             listOf(Color(0xFF00E676), Color(0xFF009E55)),
@@ -101,30 +93,30 @@ fun HomeScreen(
     )
 
     fun connect() = scope.launch {
-        if (connected) {
-            vpnManager.stop(); connected = false; seconds = 0; serverIp = null
-            status = "Готов к подключению"
+        if (connected.value) {
+            vpnManager.stop(); connected.value = false; seconds.value = 0; serverIp.value = null
+            status.value = "Готов к подключению"
         } else {
-            val s = selectedProfile
+            val s = selectedProfile.value
             if (s != null) {
                 val ok = vpnManager.start(s.outboundJson)
-                if (ok) { connected = true; serverIp = s.host; status = "Подключён к ${s.host}" }
-                else { status = "Ошибка подключения" }
+                if (ok) { connected.value = true; serverIp.value = s.host; status.value = "Подключён к ${s.host}" }
+                else { status.value = "Ошибка подключения" }
             }
         }
     }
 
     fun connectTo(s: FoundServer) = scope.launch {
-        selectedProfile = s; status = "Подключение…"
+        selectedProfile.value = s; status.value = "Подключение…"
         val ok = vpnManager.start(s.outboundJson)
-        if (ok) { connected = true; serverIp = s.host; status = "Подключён к ${s.host}" }
-        else { connected = false; status = "Ошибка подключения" }
+        if (ok) { connected.value = true; serverIp.value = s.host; status.value = "Подключён к ${s.host}" }
+        else { connected.value = false; status.value = "Ошибка подключения" }
     }
 
     fun scan() = scope.launch {
-        scanRunning = true
+        scanRunning.value = true
         val found = serverScanner.scan()
-        withContext(Dispatchers.Main) { servers.clear(); servers.addAll(found); scanRunning = false }
+        withContext(Dispatchers.Main) { servers.clear(); servers.addAll(found); scanRunning.value = false }
     }
 
     Scaffold(
@@ -150,7 +142,7 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            Text(text = status, style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
+            Text(text = status.value, style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
                 modifier = Modifier.align(Alignment.CenterHorizontally))
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -164,8 +156,8 @@ fun HomeScreen(
 
                 Box(modifier = Modifier
                     .size(220.dp)
-                    .alpha(pulseAlpha)
-                    .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
+                    .alpha(pulseAlpha.value)
+                    .graphicsLayer { scaleX = pulseScale.value; scaleY = pulseScale.value }
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
@@ -188,7 +180,7 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.PowerOff,
-                        contentDescription = if (connected) "Отключить" else "Подключить",
+                        contentDescription = if (connected.value) "Отключить" else "Подключить",
                         tint = Color(0xFF121212),
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -208,7 +200,7 @@ fun HomeScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            serverIp?.let { ip ->
+            serverIp.value?.let { ip ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "IP: $ip",
@@ -221,7 +213,7 @@ fun HomeScreen(
 
             Button(
                 onClick = { scan() },
-                enabled = !scanRunning && !connected,
+                enabled = !scanRunning.value && !connected.value,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -232,7 +224,7 @@ fun HomeScreen(
                     modifier = Modifier.padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    if (scanRunning) {
+                    if (scanRunning.value) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             color = MaterialTheme.colorScheme.primary,
@@ -240,7 +232,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(if (scanRunning) "Сканирование…" else if (connected) "Подключено" else "Сканировать серверы")
+                    Text(if (scanRunning.value) "Сканирование…" else if (connected.value) "Подключено" else "Сканировать серверы")
                 }
             }
 
@@ -258,7 +250,8 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            ServerList(servers = servers, selectedProfile = selectedProfile, onConnect = ::connectTo)
+            // Передаем selectedProfile.value
+            ServerList(servers = servers, selectedProfile = selectedProfile.value, onConnect = ::connectTo)
         }
     }
 }
