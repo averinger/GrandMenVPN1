@@ -1,13 +1,21 @@
 package com.grandmenvpn.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PowerOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.tokens.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -24,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     vpnManager: VpnManager,
@@ -79,8 +88,8 @@ fun HomeScreen(
             listOf(Color(0xFFF44336), Color(0xFFB71C1C))
         else
             listOf(Color(0xFF00E676), Color(0xFF009E55)),
-        start = Alignment.TopCenter,
-        end = Alignment.BottomCenter
+        start = Offset(0.5f, 0f),
+        end = Offset(0.5f, 1f)
     )
 
     fun connect() = scope.launch {
@@ -157,7 +166,7 @@ fun HomeScreen(
                                 Color(0xFF00E676).copy(alpha = 0f),
                                 Color(0xFF00E676).copy(alpha = 0.4f)
                             ),
-                            center = Alignment.Center
+                            center = Offset(0.5f, 0.5f)
                         ),
                         shape = CircleShape
                     )

@@ -1,6 +1,6 @@
 package com.grandmenvpn.app.ui.screens
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -10,7 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.grandmenvpn.app.scanner.FoundServer
 
 @Composable
@@ -34,7 +36,7 @@ fun ServerList(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A).copy(alpha = 0.7f)),
                 shape = RoundedCornerShape(24.dp),
-                elevation = 0.dp
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
