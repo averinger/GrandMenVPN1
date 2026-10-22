@@ -1,6 +1,7 @@
 package com.grandmenvpn.app.scanner
 
 import com.grandmenvpn.app.parser.ParserRegistry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -10,6 +11,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlin.text.Charsets
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.InetSocketAddress

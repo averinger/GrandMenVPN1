@@ -3,6 +3,7 @@ package com.grandmenvpn.app.parser
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.text.Charsets
 import java.nio.charset.Charsets
 import java.util.Base64
 
