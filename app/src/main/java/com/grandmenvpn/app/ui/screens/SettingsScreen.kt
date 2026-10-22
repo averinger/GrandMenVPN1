@@ -197,7 +197,6 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .clickable { /* TODO: navigate to whitelist */ },
                     horizontalArrangement = Arrangement.SpaceBetween

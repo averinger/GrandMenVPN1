@@ -10,6 +10,9 @@ import java.net.URI
 import java.nio.charset.Charsets
 import java.util.Base64
 
+// Import internal json instance from SingBoxJson.kt
+import com.grandmenvpn.app.parser.json
+
 /**
  * vmess://BASE64(JSON) — формат v2rayN.
  */

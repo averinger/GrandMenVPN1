@@ -5,6 +5,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+// Import internal json instance from SingBoxJson.kt
+import com.grandmenvpn.app.parser.json
+
 /**
  * Принимает готовый конфиг sing-box (JSON) и оставляет в нём только прокси-часть:
  * первый outbound (кроме direct/block) становится тегом "proxy".
