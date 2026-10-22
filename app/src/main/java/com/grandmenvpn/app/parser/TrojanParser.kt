@@ -5,6 +5,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URI
 
+import com.grandmenvpn.app.parser.decode
+import com.grandmenvpn.app.parser.outboundJson
+import com.grandmenvpn.app.parser.queryParam
+import com.grandmenvpn.app.parser.queryParams
+import com.grandmenvpn.app.parser.transport
+
 /**
  * trojan://password@host:port?type=&sni=&alpn=&fp=&path=&serviceName=&allowInsecure=
  */

@@ -7,6 +7,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
+import com.grandmenvpn.app.parser.endpointJson
+
 /**
  * Парсер конфига AmneziaWG (.conf) -> endpoint sing-box (type wireguard).
  * Формат:

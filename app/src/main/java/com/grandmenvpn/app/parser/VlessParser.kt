@@ -7,6 +7,14 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.URI
 
+import com.grandmenvpn.app.parser.decode
+import com.grandmenvpn.app.parser.endpointJson
+import com.grandmenvpn.app.parser.outboundJson
+import com.grandmenvpn.app.parser.queryParam
+import com.grandmenvpn.app.parser.queryParamBool
+import com.grandmenvpn.app.parser.queryParams
+import com.grandmenvpn.app.parser.transport
+
 /**
  * vless://UUID@host:port?security=&type=&sni=&pbk=&sid=&fp=&flow=&alpn=&path=&serviceName=&allowInsecure=
  */

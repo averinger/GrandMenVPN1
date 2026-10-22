@@ -6,6 +6,12 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.URI
 
+import com.grandmenvpn.app.parser.decode
+import com.grandmenvpn.app.parser.outboundJson
+import com.grandmenvpn.app.parser.queryParam
+import com.grandmenvpn.app.parser.queryParams
+import com.grandmenvpn.app.parser.tlsBlock
+
 /**
  * hysteria2://password@host:port?obfs=&obfs-password=&sni=&insecure=&alpn=
  * (алиас hy2://)

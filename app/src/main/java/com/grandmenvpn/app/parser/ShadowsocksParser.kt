@@ -6,6 +6,10 @@ import kotlinx.serialization.json.put
 import java.nio.charset.Charsets
 import java.util.Base64
 
+import com.grandmenvpn.app.parser.decode
+import com.grandmenvpn.app.parser.outboundJson
+import com.grandmenvpn.app.parser.queryParams
+
 /**
  * ss://BASE64(method:pass@host:port) и ss://method:pass@host:port
  */
