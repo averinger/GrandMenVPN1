@@ -2,9 +2,9 @@ package com.grandmenvpn.app.config
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.preferencesDataStore
-import androidx.datastore.preferences.Preferences
 import kotlinx.coroutines.flow.first
 
 /**

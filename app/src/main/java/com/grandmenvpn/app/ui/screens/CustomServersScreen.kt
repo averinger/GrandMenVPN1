@@ -31,6 +31,7 @@ import com.grandmenvpn.app.config.CustomServerManager
 import com.grandmenvpn.app.parser.ParserRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
