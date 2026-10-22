@@ -1,36 +1,40 @@
 package com.grandmenvpn.app.ui.screens
 
-import androidx.compose.runtime.*
-import androidx.compose.material3.*
-import androidx.compose.foundation.layout.*
+import android.app.Activity
+import android.net.VpnService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PowerOff
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
+import com.grandmenvpn.app.config.CustomServerManager
 import com.grandmenvpn.app.scanner.FoundServer
 import com.grandmenvpn.app.scanner.ServerScanner
 import com.grandmenvpn.app.vpn.VpnManager
-import com.grandmenvpn.app.config.CustomServerManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,29 +46,64 @@ fun HomeScreen(
     val context = LocalContext.current
     val customServerManager = remember { CustomServerManager(context) }
     
+    // Состояния (без делегатов)
     val connected = remember { mutableStateOf(false) }
     val serverIp = remember { mutableStateOf<String?>(null) }
     val status = remember { mutableStateOf("Готов к подключению") }
     val servers = remember { mutableStateListOf<FoundServer>() }
-    
-    // Состояния для загрузки
     val scanRunning = remember { mutableStateOf(false) }
-    val scanStatusText = remember { mutableStateOf("") } // Текст для экрана загрузки
-    
+    val scanStatusText = remember { mutableStateOf("") }
     val selectedProfile = remember { mutableStateOf<FoundServer?>(null) }
 
     val pulseScale = remember { mutableStateOf(1f) }
     val pulseAlpha = remember { mutableStateOf(0f) }
 
-    // Загрузка кастомных серверов при старте
+    // --- ЛАУНЧЕР ДЛЯ ЗАПРОСА РАЗРЕШЕНИЯ VPN ---
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // Пользователь нажал "ОК" в системном окне, запускаем реальный VPN
+            val s = selectedProfile.value
+            if (s != null) {
+                scope.launch {
+                    val ok = vpnManager.start(s.outboundJson)
+                    if (ok) {
+                        connected.value = true
+                        status.value = "Подключён к ${s.host}"
+                        serverIp.value = "Получение IP..."
+                        serverIp.value = fetchPublicIp() ?: s.host
+                    } else {
+                        status.value = "Ошибка запуска VPN"
+                    }
+                }
+            }
+        } else {
+            status.value = "В разрешении на VPN отказано"
+        }
+    }
+
+    // Загрузка ручных серверов с парсингом реального IP
     LaunchedEffect(Unit) {
         try {
             val customServers = customServerManager.load()
             val mappedServers = customServers.map { custom ->
+                var realHost = custom.name
+                var realPort = 0
+                try {
+                    val json = JSONObject(custom.outboundJson)
+                    val outbounds = json.optJSONArray("outbounds")
+                    if (outbounds != null && outbounds.length() > 0) {
+                        val outbound = outbounds.getJSONObject(0)
+                        realHost = outbound.optString("server", custom.name)
+                        realPort = outbound.optInt("server_port", 0)
+                    }
+                } catch (e: Exception) { }
+
                 FoundServer(
                     protocol = "Custom",
-                    host = custom.name,
-                    port = 0,
+                    host = realHost,
+                    port = realPort,
                     pingMs = 0,
                     source = "Manual",
                     config = custom.config,
@@ -103,7 +142,22 @@ fun HomeScreen(
         end = Offset(0.5f, 1f)
     )
 
-    fun connect() = scope.launch {
+    // Вспомогательная функция подключения (чтобы не дублировать код)
+    fun executeConnection(s: FoundServer) = scope.launch {
+        status.value = "Подключение…"
+        val ok = vpnManager.start(s.outboundJson)
+        if (ok) {
+            connected.value = true
+            status.value = "Подключён к ${s.host}"
+            serverIp.value = "Получение IP..."
+            serverIp.value = fetchPublicIp() ?: s.host
+        } else {
+            connected.value = false
+            status.value = "Ошибка подключения"
+        }
+    }
+
+    fun connect() {
         if (connected.value) {
             vpnManager.stop()
             connected.value = false
@@ -112,18 +166,12 @@ fun HomeScreen(
         } else {
             val s = selectedProfile.value
             if (s != null) {
-                status.value = "Подключение…"
-                val ok = vpnManager.start(s.outboundJson)
-                if (ok) {
-                    connected.value = true
-                    status.value = "Подключён к ${s.host}"
-
-                    // Добавляем получение реального IP
-                    serverIp.value = "Получение IP..."
-                    val realIp = fetchPublicIp()
-                    serverIp.value = realIp ?: s.host
+                val intent = VpnService.prepare(context)
+                if (intent != null) {
+                    status.value = "Запрос разрешения на VPN..."
+                    vpnPermissionLauncher.launch(intent)
                 } else {
-                    status.value = "Ошибка подключения"
+                    executeConnection(s)
                 }
             } else {
                 status.value = "Сначала выберите сервер из списка"
@@ -131,21 +179,14 @@ fun HomeScreen(
         }
     }
 
-    fun connectTo(s: FoundServer) = scope.launch {
+    fun connectTo(s: FoundServer) {
         selectedProfile.value = s
-        status.value = "Подключение…"
-        val ok = vpnManager.start(s.outboundJson)
-        if (ok) {
-            connected.value = true
-            status.value = "Подключён к ${s.host}"
-
-            // Добавляем получение реального IP
-            serverIp.value = "Получение IP..."
-            val realIp = fetchPublicIp()
-            serverIp.value = realIp ?: s.host
+        val intent = VpnService.prepare(context)
+        if (intent != null) {
+            status.value = "Запрос разрешения на VPN..."
+            vpnPermissionLauncher.launch(intent)
         } else {
-            connected.value = false
-            status.value = "Ошибка подключения"
+            executeConnection(s)
         }
     }
 
@@ -155,10 +196,8 @@ fun HomeScreen(
         status.value = "Сканирование..."
         
         try {
-            // Небольшая задержка для визуального эффекта
             delay(500) 
             scanStatusText.value = "Проверка рабочих серверов (TCP Ping)..."
-            
             val found = serverScanner.scan()
             
             withContext(Dispatchers.Main) {
@@ -166,7 +205,6 @@ fun HomeScreen(
                 servers.clear()
                 servers.addAll(customServers)
                 servers.addAll(found)
-                
                 status.value = if (found.isEmpty()) "Свободных серверов не найдено" else "Найдено серверов: ${found.size}"
             }
         } catch (e: Exception) {
@@ -193,10 +231,9 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        // Используем Box как контейнер для наложения экрана загрузки поверх всего
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             
-            // Основной интерфейс
+            // Основной UI
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -240,29 +277,30 @@ fun HomeScreen(
                             .clip(CircleShape)
                             .background(buttonBrush, shape = CircleShape)
                             .clickable { connect() }
-                            .align(Alignment.Center)
+                            .align(Alignment.Center),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (connected.value) "GMVPN Disconnect" else "GMVPN Connect",
+                            text = if (connected.value) "GMVPN\nDisconnect" else "GMVPN\nConnect",
                             color = Color(0xFF121212),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                            fontSize = 20.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 24.sp
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-            serverIp.value?.let { ip ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Ваш IP: $ip",
-                    style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
+                serverIp.value?.let { ip ->
+                    Text(
+                        text = "Ваш IP: $ip",
+                        style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 Button(
                     onClick = { scan() },
@@ -290,18 +328,17 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ВАЖНО: weight(1f) дает списку занять все оставшееся место на экране
                 Box(modifier = Modifier.weight(1f)) {
                     ServerList(servers = servers, selectedProfile = selectedProfile.value, onConnect = ::connectTo)
                 }
             }
 
-            // ЭКРАН ЗАГРУЗКИ (Поверх всего)
+            // Экран загрузки
             if (scanRunning.value) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.8f)), // Затемнение
+                        .background(Color.Black.copy(alpha = 0.8f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -330,6 +367,7 @@ fun HomeScreen(
     }
 }
 
+// Вспомогательная функция для получения IP (вне Composable)
 suspend fun fetchPublicIp(): String? = withContext(Dispatchers.IO) {
     try {
         val url = java.net.URL("https://api.ipify.org")
