@@ -4,7 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.grandmenvpn.app.config.CustomServer
 import com.grandmenvpn.app.config.CustomServerManager
 import com.grandmenvpn.app.parser.ParserRegistry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
@@ -27,8 +28,8 @@ fun ManualInputScreen(
     var input by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
 
-    val filePicker = rememberLauncherForActivityResult(OpenDocument) { uri: Uri? ->
-        uri?.let { scope.launch {
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri?.let { scope.launch(Dispatchers.IO) {
             context.contentResolver.openInputStream(uri)?.use { stream ->
                 input = stream.bufferedReader().readText()
             }

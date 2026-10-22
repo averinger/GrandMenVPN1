@@ -2,6 +2,7 @@ package com.grandmenvpn.app.parser
 
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.URI
@@ -27,38 +28,38 @@ class VlessParser : ConfigParser {
         val sni = queryParam(params, "sni").ifEmpty { queryParam(params, "peer") }.ifEmpty { host }
 
         val outbound = buildJsonObject {
-            put("type", "vless")
-            put("tag", "proxy")
-            put("server", host)
+            put("type", jsonPrimitive("vless"))
+            put("tag", jsonPrimitive("proxy"))
+            put("server", jsonPrimitive(host))
             put("server_port", port)
-            put("uuid", uuid)
+            put("uuid", jsonPrimitive(uuid))
 
-            queryParam(params, "flow").takeIf { it.isNotEmpty() }?.let { put("flow", it) }
+            queryParam(params, "flow").takeIf { it.isNotEmpty() }?.let { put("flow", jsonPrimitive(it)) }
 
             if (security == "tls" || security == "reality") {
                 putJsonObject("tls") {
                     put("enabled", true)
-                    put("server_name", sni)
+                    put("server_name", jsonPrimitive(sni))
                     put("insecure", queryParamBool(params, "allowInsecure") ||
                             queryParamBool(params, "insecure") || queryParamBool(params, "allow_insecure"))
                     queryParam(params, "alpn").takeIf { it.isNotEmpty() }?.let { alpn ->
-                        put("alpn", buildJsonArray { alpn.split(',').forEach { add(it.trim()) } })
+                        put("alpn", buildJsonArray { alpn.split(',').forEach { add(jsonPrimitive(it.trim())) } })
                     }
                     if (security == "reality") {
                         putJsonObject("reality") {
                             put("enabled", true)
-                            put("public_key", queryParam(params, "pbk"))
-                            put("short_id", queryParam(params, "sid"))
+                            put("public_key", jsonPrimitive(queryParam(params, "pbk")))
+                            put("short_id", jsonPrimitive(queryParam(params, "sid")))
                         }
                         putJsonObject("utls") {
                             put("enabled", true)
-                            put("fingerprint", queryParam(params, "fp").ifEmpty { "chrome" })
+                            put("fingerprint", jsonPrimitive(queryParam(params, "fp").ifEmpty { "chrome" }))
                         }
                     } else {
                         queryParam(params, "fp").takeIf { it.isNotEmpty() }?.let { fp ->
                             putJsonObject("utls") {
                                 put("enabled", true)
-                                put("fingerprint", fp)
+                                put("fingerprint", jsonPrimitive(fp))
                             }
                         }
                     }

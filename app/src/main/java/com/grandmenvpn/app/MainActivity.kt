@@ -18,6 +18,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.tokens.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,9 +27,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import com.grandmenvpn.app.config.CustomServerManager
+import com.grandmenvpn.app.config.SplitRouteManager
 import com.grandmenvpn.app.config.WhitelistManager
 import com.grandmenvpn.app.scanner.ServerScanner
+import com.grandmenvpn.app.ui.screens.CustomServersScreen
 import com.grandmenvpn.app.ui.screens.HomeScreen
 import com.grandmenvpn.app.ui.screens.ManualInputScreen
 import com.grandmenvpn.app.ui.screens.SettingsScreen
@@ -63,6 +67,7 @@ private enum class AppTab(
     Settings("Настройки", Icons.Filled.Settings)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GrandMenApp() {
     var currentTab by remember { mutableStateOf(AppTab.Home) }

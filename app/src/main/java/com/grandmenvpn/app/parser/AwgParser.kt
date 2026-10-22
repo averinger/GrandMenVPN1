@@ -1,7 +1,9 @@
 package com.grandmenvpn.app.parser
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
@@ -71,17 +73,17 @@ class AwgParser : ConfigParser {
             ?: listOf("0.0.0.0/0", "::/0")
 
         val endpointJson = buildJsonObject {
-            put("type", "wireguard")
-            put("tag", "proxy")
+            put("type", jsonPrimitive("wireguard"))
+            put("tag", jsonPrimitive("proxy"))
             put("mtu", interfaceSection["mtu"]?.toIntOrNull() ?: 1408)
-            put("private_key", privateKey)
-            put("address", buildJsonArray { addresses.forEach { add(it) } })
+            put("private_key", jsonPrimitive(privateKey))
+            put("address", buildJsonArray { addresses.forEach { add(jsonPrimitive(it)) } })
             put("peers", buildJsonArray {
                 add(buildJsonObject {
-                    put("address", host)
+                    put("address", jsonPrimitive(host))
                     put("port", port)
-                    put("public_key", publicKey)
-                    put("allowed_ips", buildJsonArray { allowedIps.forEach { add(it) } })
+                    put("public_key", jsonPrimitive(publicKey))
+                    put("allowed_ips", buildJsonArray { allowedIps.forEach { add(jsonPrimitive(it)) } })
                 })
             })
         }

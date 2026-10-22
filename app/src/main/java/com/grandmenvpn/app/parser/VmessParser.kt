@@ -1,7 +1,9 @@
 package com.grandmenvpn.app.parser
 
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.URI
@@ -28,26 +30,26 @@ class VmessParser : ConfigParser {
         val sni = data.str("sni") ?: data.str("host") ?: host
 
         val outbound = buildJsonObject {
-            put("type", "vmess")
-            put("tag", "proxy")
-            put("server", host)
+            put("type", jsonPrimitive("vmess"))
+            put("tag", jsonPrimitive("proxy"))
+            put("server", jsonPrimitive(host))
             put("server_port", port)
-            put("uuid", id)
+            put("uuid", jsonPrimitive(id))
             put("alter_id", data.str("aid")?.toIntOrNull() ?: 0)
-            put("security", data.str("scy") ?: "auto")
+            put("security", jsonPrimitive(data.str("scy") ?: "auto"))
 
             if (data.str("tls") == "tls") {
                 putJsonObject("tls") {
                     put("enabled", true)
-                    put("server_name", sni)
+                    put("server_name", jsonPrimitive(sni))
                     put("insecure", false)
                     data.str("alpn")?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
                         ?.takeIf { it.isNotEmpty() }
-                        ?.let { alpn -> put("alpn", kotlinx.serialization.json.buildJsonArray { alpn.forEach { add(it) } }) }
+                        ?.let { alpn -> put("alpn", buildJsonArray { alpn.forEach { add(jsonPrimitive(it)) } }) }
                     data.str("fp")?.takeIf { it.isNotEmpty() }?.let { fp ->
                         putJsonObject("utls") {
                             put("enabled", true)
-                            put("fingerprint", fp)
+                            put("fingerprint", jsonPrimitive(fp))
                         }
                     }
                 }

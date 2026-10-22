@@ -4,7 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material3.tokens.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.grandmenvpn.app.config.CustomServer
 import com.grandmenvpn.app.config.CustomServerManager
@@ -30,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomServersScreen(
     manager: CustomServerManager,
@@ -43,7 +46,7 @@ fun CustomServersScreen(
     var jsonInput by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
 
-    val filePicker = rememberLauncherForActivityResult(OpenDocument) { uri: Uri? ->
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let { scope.launch { importUri(it) } }
     }
 
@@ -51,7 +54,7 @@ fun CustomServersScreen(
         scope.launch { servers.addAll(manager.load()) }
     }
 
-    private fun importJson(text: String) {
+    fun importJson(text: String) {
         val outbound = ParserRegistry.parse(text)
         if (outbound == null) {
             status = "Не удалось распарсить JSON"
@@ -68,7 +71,7 @@ fun CustomServersScreen(
         jsonInput = ""
     }
 
-    private fun importUri(uri: Uri) = withContext(Dispatchers.IO) {
+    fun importUri(uri: Uri) = withContext(Dispatchers.IO) {
         context.contentResolver.openInputStream(uri)?.use { input ->
             val text = input.bufferedReader().readText()
             withContext(Dispatchers.Main) {

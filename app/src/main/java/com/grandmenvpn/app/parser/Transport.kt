@@ -3,6 +3,7 @@ package com.grandmenvpn.app.parser
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
@@ -17,26 +18,26 @@ internal fun transport(
 ): JsonObject? = when (network) {
     "tcp", "raw", "none", "" -> null
     "ws" -> buildJsonObject {
-        put("type", "ws")
-        put("path", queryParam(params, "path").ifEmpty { "/" })
+        put("type", jsonPrimitive("ws"))
+        put("path", jsonPrimitive(queryParam(params, "path").ifEmpty { "/" }))
         if (host.isNotEmpty()) {
-            putJsonObject("headers") { put("Host", host) }
+            putJsonObject("headers") { put("Host", jsonPrimitive(host)) }
         }
     }
     "grpc" -> buildJsonObject {
-        put("type", "grpc")
-        put("service_name", queryParam(params, "serviceName"))
+        put("type", jsonPrimitive("grpc"))
+        put("service_name", jsonPrimitive(queryParam(params, "serviceName")))
     }
     "httpupgrade" -> buildJsonObject {
-        put("type", "httpupgrade")
-        put("path", queryParam(params, "path").ifEmpty { "/" })
-        if (host.isNotEmpty()) put("host", host)
+        put("type", jsonPrimitive("httpupgrade"))
+        put("path", jsonPrimitive(queryParam(params, "path").ifEmpty { "/" }))
+        if (host.isNotEmpty()) put("host", jsonPrimitive(host))
     }
     "h2", "http" -> buildJsonObject {
-        put("type", "http")
-        put("path", queryParam(params, "path").ifEmpty { "/" })
+        put("type", jsonPrimitive("http"))
+        put("path", jsonPrimitive(queryParam(params, "path").ifEmpty { "/" }))
         if (host.isNotEmpty()) {
-            put("host", buildJsonArray { add(host) })
+            put("host", buildJsonArray { add(jsonPrimitive(host)) })
         }
     }
     else -> null
@@ -49,19 +50,19 @@ internal fun tlsBlock(
     defaultAlpn: List<String> = emptyList()
 ): JsonObject = buildJsonObject {
     put("enabled", true)
-    put("server_name", queryParam(params, "sni").ifEmpty { host })
+    put("server_name", jsonPrimitive(queryParam(params, "sni").ifEmpty { host }))
     put("insecure", queryParamBool(params, "allowInsecure") ||
             queryParamBool(params, "insecure") || queryParamBool(params, "allow_insecure"))
     val alpn = queryParam(params, "alpn").takeIf { it.isNotEmpty() }
         ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
         ?: defaultAlpn
     if (alpn.isNotEmpty()) {
-        put("alpn", buildJsonArray { alpn.forEach { add(it) } })
+        put("alpn", buildJsonArray { alpn.forEach { add(jsonPrimitive(it)) } })
     }
     queryParam(params, "fp").takeIf { it.isNotEmpty() }?.let { fp ->
         putJsonObject("utls") {
             put("enabled", true)
-            put("fingerprint", fp)
+            put("fingerprint", jsonPrimitive(fp))
         }
     }
 }

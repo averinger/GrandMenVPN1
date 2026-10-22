@@ -1,13 +1,14 @@
 package com.grandmenvpn.app.config
 
 import android.content.Context
+import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ListenableWorker
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
-import androidx.work.coroutine.CoroutineWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.ListSerializer
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -90,12 +91,12 @@ class SubscriptionUpdateWorker(
     params: androidx.work.WorkerParameters
 ) : CoroutineWorker(appContext, params) {
 
-    override suspend fun doWork(): androidx.work.Result {
+    override suspend fun doWork(): ListenableWorker.Result {
         return try {
             SubscriptionManager(applicationContext).refreshAll()
-            androidx.work.Result.success()
+            ListenableWorker.Result.success()
         } catch (_: Exception) {
-            androidx.work.Result.failure()
+            ListenableWorker.Result.failure()
         }
     }
 }

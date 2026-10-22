@@ -3,6 +3,7 @@ package com.grandmenvpn.app.scanner
 import com.grandmenvpn.app.parser.ParserRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.dispatchers.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -14,6 +15,7 @@ import okhttp3.Request
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.charset.Charsets
+import java.time.Duration
 
 /**
  * Найденный рабочий сервер.
@@ -30,8 +32,8 @@ data class FoundServer(
 
 object ServerScanner {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10_000)
-        .readTimeout(10_000)
+        .connectTimeout(Duration.ofMillis(10_000))
+        .readTimeout(Duration.ofMillis(10_000))
         .build()
 
     private const val DOWNLOAD_CONCURRENCY = 10
@@ -222,10 +224,10 @@ object ServerScanner {
                 val req = "GET /ip HTTP/1.1\r\nHost: $IP_CHECK_HOST\r\nConnection: close\r\n\r\n"
                 out.write(req.toByteArray(Charsets.UTF_8)); out.flush()
                 val buf = StringBuilder()
-                val chunk = CharArray(1024)
+                val chunk = ByteArray(1024)
                 var len: Int
                 while (inn.read(chunk).also { len = it } > 0) {
-                    buf.append(chunk, 0, len)
+                    buf.append(String(chunk, 0, len, Charsets.UTF_8))
                 }
                 val body = buf.toString()
                 val idx = body.indexOf("\r\n\r\n")
