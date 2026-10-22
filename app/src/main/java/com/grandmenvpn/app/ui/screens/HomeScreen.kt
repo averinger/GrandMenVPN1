@@ -41,12 +41,15 @@ fun HomeScreen(
     val context = LocalContext.current
     val customServerManager = remember { CustomServerManager(context) }
     
-    // Состояния (без таймера)
     val connected = remember { mutableStateOf(false) }
     val serverIp = remember { mutableStateOf<String?>(null) }
     val status = remember { mutableStateOf("Готов к подключению") }
     val servers = remember { mutableStateListOf<FoundServer>() }
+    
+    // Состояния для загрузки
     val scanRunning = remember { mutableStateOf(false) }
+    val scanStatusText = remember { mutableStateOf("") } // Текст для экрана загрузки
+    
     val selectedProfile = remember { mutableStateOf<FoundServer?>(null) }
 
     val pulseScale = remember { mutableStateOf(1f) }
@@ -68,12 +71,10 @@ fun HomeScreen(
                 )
             }
             servers.addAll(mappedServers)
-        } catch (e: Exception) {
-            // Игнорируем, если файла еще нет
-        }
+        } catch (e: Exception) { }
     }
 
-    // Анимация пульсации кнопки
+    // Анимация пульсации
     LaunchedEffect(connected.value) {
         pulseScale.value = 1f
         pulseAlpha.value = 0f
@@ -141,17 +142,28 @@ fun HomeScreen(
 
     fun scan() = scope.launch {
         scanRunning.value = true
-        status.value = "Сканирование серверов..."
-        val found = serverScanner.scan()
+        scanStatusText.value = "Поиск источников..."
+        status.value = "Сканирование..."
         
-        withContext(Dispatchers.Main) {
-            // Сохраняем кастомные серверы
-            val customServers = servers.filter { it.source == "Manual" }
-            servers.clear()
-            servers.addAll(customServers)
-            servers.addAll(found)
+        try {
+            // Небольшая задержка для визуального эффекта
+            delay(500) 
+            scanStatusText.value = "Проверка рабочих серверов (TCP Ping)..."
+            
+            val found = serverScanner.scan()
+            
+            withContext(Dispatchers.Main) {
+                val customServers = servers.filter { it.source == "Manual" }
+                servers.clear()
+                servers.addAll(customServers)
+                servers.addAll(found)
+                
+                status.value = if (found.isEmpty()) "Свободных серверов не найдено" else "Найдено серверов: ${found.size}"
+            }
+        } catch (e: Exception) {
+            status.value = "Ошибка сети: ${e.localizedMessage ?: "Проверьте интернет"}"
+        } finally {
             scanRunning.value = false
-            status.value = if (found.isEmpty()) "Ничего не найдено" else "Найдено серверов: ${found.size}"
         }
     }
 
@@ -164,7 +176,7 @@ fun HomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 actions = {
-                    IconButton(onClick = { scan() }) {
+                    IconButton(onClick = { scan() }, enabled = !scanRunning.value) {
                         Icon(Icons.Default.Refresh, contentDescription = "Сканировать", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
@@ -172,115 +184,137 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = status.value,
-                style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Кнопка подключения
-            Box(modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)) {
-                Box(modifier = Modifier
-                    .size(186.dp)
-                    .background(Color(0xFF000000).copy(alpha = 0.30f), shape = CircleShape)
-                    .offset(y = 8.dp)
-                    .align(Alignment.Center))
-
-                Box(modifier = Modifier
-                    .size(220.dp)
-                    .alpha(pulseAlpha.value)
-                    .graphicsLayer { scaleX = pulseScale.value; scaleY = pulseScale.value }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFF00E676).copy(alpha = 0f),
-                                Color(0xFF00E676).copy(alpha = 0.4f)
-                            ),
-                            center = Offset(0.5f, 0.5f)
-                        ),
-                        shape = CircleShape
-                    )
-                    .align(Alignment.Center))
-
-                Box(
-                    modifier = Modifier
-                        .size(180.dp)
-                        .clip(CircleShape)
-                        .background(buttonBrush, shape = CircleShape)
-                        .clickable { connect() }
-                        .align(Alignment.Center)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PowerOff,
-                        contentDescription = if (connected.value) "Отключить" else "Подключить",
-                        tint = Color(0xFF121212),
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // IP сервера
-            serverIp.value?.let { ip ->
+        // Используем Box как контейнер для наложения экрана загрузки поверх всего
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            
+            // Основной интерфейс
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
                 Text(
-                    text = "IP: $ip",
-                    style = TextStyle(fontSize = 18.sp, color = MaterialTheme.colorScheme.primary),
+                    text = status.value,
+                    style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
 
-            Button(
-                onClick = { scan() },
-                enabled = !scanRunning.value && !connected.value,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    if (scanRunning.value) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 2.dp
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Кнопка подключения
+                Box(modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)) {
+                    Box(modifier = Modifier
+                        .size(186.dp)
+                        .background(Color(0xFF000000).copy(alpha = 0.30f), shape = CircleShape)
+                        .offset(y = 8.dp)
+                        .align(Alignment.Center))
+
+                    Box(modifier = Modifier
+                        .size(220.dp)
+                        .alpha(pulseAlpha.value)
+                        .graphicsLayer { scaleX = pulseScale.value; scaleY = pulseScale.value }
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF00E676).copy(alpha = 0f),
+                                    Color(0xFF00E676).copy(alpha = 0.4f)
+                                ),
+                                center = Offset(0.5f, 0.5f)
+                            ),
+                            shape = CircleShape
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        .align(Alignment.Center))
+
+                    Box(
+                        modifier = Modifier
+                            .size(180.dp)
+                            .clip(CircleShape)
+                            .background(buttonBrush, shape = CircleShape)
+                            .clickable { connect() }
+                            .align(Alignment.Center)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PowerOff,
+                            contentDescription = if (connected.value) "Отключить" else "Подключить",
+                            tint = Color(0xFF121212),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                serverIp.value?.let { ip ->
+                    Text(
+                        text = "IP: $ip",
+                        style = TextStyle(fontSize = 18.sp, color = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                Button(
+                    onClick = { scan() },
+                    enabled = !scanRunning.value && !connected.value,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
                     Text(if (scanRunning.value) "Сканирование…" else "Сканировать серверы")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Доступные серверы",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    ),
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ВАЖНО: weight(1f) дает списку занять все оставшееся место на экране
+                Box(modifier = Modifier.weight(1f)) {
+                    ServerList(servers = servers, selectedProfile = selectedProfile.value, onConnect = ::connectTo)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Надпись "Доступные серверы" (без таймера)
-            Text(
-                text = "Доступные серверы",
-                style = TextStyle(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onBackground
-                ),
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Список серверов
-            ServerList(servers = servers, selectedProfile = selectedProfile.value, onConnect = ::connectTo)
+            // ЭКРАН ЗАГРУЗКИ (Поверх всего)
+            if (scanRunning.value) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.8f)), // Затемнение
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF00E676),
+                            modifier = Modifier.size(60.dp),
+                            strokeWidth = 6.dp
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = scanStatusText.value,
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Это может занять до 30 секунд",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }
