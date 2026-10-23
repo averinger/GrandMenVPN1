@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.grandmenvpn.app.config.SplitRouteManager
 import com.grandmenvpn.app.config.WhitelistManager
 import kotlinx.coroutines.launch
