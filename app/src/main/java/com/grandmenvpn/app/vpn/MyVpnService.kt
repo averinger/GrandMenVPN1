@@ -40,7 +40,12 @@ class MyVpnService : VpnService() {
                 startSingBox(tunFd!!.fd, configJson)
             } catch (e: Throwable) {
                 Log.e("MyVpnService", "Ошибка запуска sing-box (библиотека не подключена): ${e.message}")
-                // Здесь можно добавить отправку ошибки в DebugLogger, если нужно
+                
+                // ВАЖНО: Закрываем TUN и останавливаем службу, чтобы не было "черной дыры"!
+                tunFd?.close()
+                tunFd = null
+                stopSelf()
+                return START_NOT_STICKY
             }
 
             return START_STICKY

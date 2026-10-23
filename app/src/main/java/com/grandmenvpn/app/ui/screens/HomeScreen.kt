@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.grandmenvpn.app.config.CustomServerManager
 import com.grandmenvpn.app.scanner.FoundServer
 import com.grandmenvpn.app.scanner.ServerScanner
+import com.grandmenvpn.app.utils.DebugLogger
 import com.grandmenvpn.app.vpn.VpnManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -49,8 +50,7 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val customServerManager = remember { CustomServerManager(context) }
-
-    // Состояния (без делегатов)
+    
     val status = remember { mutableStateOf("Готов к подключению") }
     val servers = remember { mutableStateListOf<FoundServer>() }
     val scanRunning = remember { mutableStateOf(false) }
@@ -62,44 +62,43 @@ fun HomeScreen(
 
     suspend fun performVpnConnection(s: FoundServer) {
         status.value = "Проверка IP до подключения..."
-        com.grandmenvpn.app.utils.DebugLogger.log("VPN", "Начало подключения к ${s.host}:${s.port}")
-
+        DebugLogger.log("VPN", "Начало подключения к ${s.host}:${s.port}")
+        
         val ipBefore = fetchPublicIp()
-        com.grandmenvpn.app.utils.DebugLogger.log("VPN", "IP до подключения: $ipBefore")
-
+        DebugLogger.log("VPN", "IP до подключения: $ipBefore")
+        
         status.value = "Запуск VPN..."
         val ok = vpnManager.start(s.outboundJson)
-
+        
         if (ok) {
             status.value = "Ожидание смены IP..."
-            kotlinx.coroutines.delay(3000)
-
+            delay(3000)
+            
             val ipAfter = fetchPublicIp()
-            com.grandmenvpn.app.utils.DebugLogger.log("VPN", "IP после подключения: $ipAfter")
-
+            DebugLogger.log("VPN", "IP после подключения: $ipAfter")
+            
             if (ipAfter == null) {
-                com.grandmenvpn.app.utils.DebugLogger.error("VPN", "ОШИБКА: Интернет пропал после запуска VPN! Трафик не идет.")
+                DebugLogger.error("VPN", "ОШИБКА: Интернет пропал после запуска VPN! Трафик не идет.")
                 status.value = "Ошибка: нет интернета через VPN"
                 onConnectedChange(false)
                 vpnManager.stop()
             } else if (ipBefore != null && ipBefore == ipAfter) {
-                com.grandmenvpn.app.utils.DebugLogger.error("VPN", "ОШИБКА: IP не изменился! Трафик не идет через VPN.")
+                DebugLogger.error("VPN", "ОШИБКА: IP не изменился! Трафик не идет через VPN.")
                 status.value = "Ошибка: IP не изменился (VPN не работает)"
                 onConnectedChange(false)
                 vpnManager.stop()
             } else {
-                com.grandmenvpn.app.utils.DebugLogger.log("VPN", "Успешное подключение! Новый IP: $ipAfter")
+                DebugLogger.log("VPN", "Успешное подключение! Новый IP: $ipAfter")
                 onConnectedChange(true)
                 status.value = "Подключён к ${s.host}"
                 onIpChange(ipAfter)
             }
         } else {
-            com.grandmenvpn.app.utils.DebugLogger.error("VPN", "vpnManager.start() вернул false")
+            DebugLogger.error("VPN", "vpnManager.start() вернул false")
             status.value = "Ошибка запуска VPN"
         }
     }
 
-    // --- ЛАУНЧЕР ДЛЯ ЗАПРОСА РАЗРЕШЕНИЯ VPN ---
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -110,7 +109,7 @@ fun HomeScreen(
             }
         } else {
             status.value = "В разрешении на VPN отказано"
-            com.grandmenvpn.app.utils.DebugLogger.error("VPN", "Пользователь отклонил разрешение VPN")
+            DebugLogger.error("VPN", "Пользователь отклонил разрешение VPN")
         }
     }
 
@@ -122,35 +121,40 @@ fun HomeScreen(
                 var realPort = 0
                 var displayName = custom.name
 
-                // 1. Пытаемся вытащить из JSON
-                try {
-                    val json = JSONObject(custom.outboundJson)
-                    val outbounds = json.optJSONArray("outbounds")
-                    if (outbounds != null && outbounds.length() > 0) {
-                        val outbound = outbounds.getJSONObject(0)
-                        realHost = outbound.optString("server", outbound.optString("host", "Unknown"))
-                        realPort = outbound.optInt("server_port", outbound.optInt("port", 0))
-                    }
-                } catch (e: Exception) {
-                    // 2. Если это сырой WireGuard
-                    if (custom.config.contains("[Interface]")) {
-                        val endpointRegex = Regex("""Endpoint\s*=\s*([^:]+):(\d+)""")
-                        val match = endpointRegex.find(custom.config)
-                        if (match != null) {
-                            realHost = match.groupValues[1].trim()
-                            realPort = match.groupValues[2].toIntOrNull() ?: 0
+                val configText = custom.config.trim()
+                val outboundText = custom.outboundJson.trim()
+
+                if (outboundText.startsWith("{")) {
+                    // Это JSON (sing-box)
+                    try {
+                        val json = JSONObject(outboundText)
+                        val outbounds = json.optJSONArray("outbounds")
+                        if (outbounds != null && outbounds.length() > 0) {
+                            val outbound = outbounds.getJSONObject(0)
+                            realHost = outbound.optString("server", outbound.optString("host", "Unknown"))
+                            realPort = outbound.optInt("server_port", outbound.optInt("port", 0))
+                            if (displayName == "Ручной") displayName = outbound.optString("tag", "JSON Server")
                         }
+                    } catch (e: Exception) {}
+                } else if (configText.contains("[Interface]")) {
+                    // Это WireGuard (WARP)
+                    val endpointRegex = Regex("""Endpoint\s*=\s*([^:]+):(\d+)""")
+                    val match = endpointRegex.find(configText)
+                    if (match != null) {
+                        realHost = match.groupValues[1].trim()
+                        realPort = match.groupValues[2].toIntOrNull() ?: 0
                     }
-                    // 3. Если это ссылка с хэштегом (vless://...#Имя)
-                    else if (custom.config.contains("#")) {
-                        displayName = custom.config.substringAfter("#").trim()
-                        // Пытаемся вытащить хост и порт из URI
-                        try {
-                            val uri = java.net.URI(custom.config)
-                            realHost = uri.host ?: "Unknown"
-                            realPort = uri.port
-                        } catch (_: Exception) {}
-                    }
+                    displayName = "WARP / WireGuard"
+                } else if (configText.contains("://")) {
+                    // Это URI (vless://, vmess://, trojan://)
+                    try {
+                        val uri = java.net.URI(configText)
+                        realHost = uri.host ?: "Unknown"
+                        realPort = if (uri.port > 0) uri.port else 443
+                        if (configText.contains("#")) {
+                            displayName = configText.substringAfter("#").trim()
+                        }
+                    } catch (e: Exception) {}
                 }
 
                 FoundServer(
@@ -163,25 +167,28 @@ fun HomeScreen(
                     outboundJson = custom.outboundJson
                 )
             }
-
-            // Добавляем в список
             servers.addAll(mappedServers)
-
-            // Запускаем пинг для кастомных серверов в фоне
-            mappedServers.forEach { server ->
-                scope.launch {
-                    val ping = serverScanner.pingSingleServer(server.host, server.port)
-                    // Обновляем пинг в списке
-                    val index = servers.indexOfFirst { it.host == server.host && it.port == server.port }
-                    if (index != -1) {
-                        servers[index] = servers[index].copy(pingMs = ping)
+            
+            // Тестовый сервер
+            val testConfig = """
+                {
+                  "outbounds": [
+                    {
+                      "type": "shadowsocks",
+                      "tag": "proxy",
+                      "server": "1.1.1.1",
+                      "server_port": 8388,
+                      "method": "aes-256-gcm",
+                      "password": "test"
                     }
+                  ]
                 }
-            }
+            """.trimIndent()
+            servers.add(FoundServer("Test", "1.1.1.1", 8388, 50, "System", "Test Server", testConfig))
+            
         } catch (e: Exception) { }
     }
 
-    // Анимация пульсации
     LaunchedEffect(isConnected) {
         pulseScale.value = 1f
         pulseAlpha.value = 0f
@@ -209,35 +216,18 @@ fun HomeScreen(
         end = Offset(0.5f, 1f)
     )
 
-    // Вспомогательная функция подключения (чтобы не дублировать код)
-    fun executeConnection(s: FoundServer) = scope.launch {
-        status.value = "Подключение…"
-        val ok = vpnManager.start(s.outboundJson)
-        if (ok) {
-            onConnectedChange(true)
-            status.value = "Подключён к ${s.host}"
-            onIpChange("Получение IP...")
-            onIpChange(fetchPublicIp() ?: s.host)
-        } else {
-            onConnectedChange(false)
-            status.value = "Ошибка подключения"
-        }
-    }
-
     fun connect() {
         if (isConnected) {
             scope.launch {
                 try {
-                    // Принудительно останавливаем VPN
                     vpnManager.stop()
                 } catch (e: Exception) {
-                    com.grandmenvpn.app.utils.DebugLogger.error("VPN", "Ошибка при остановке VPN", e)
+                    DebugLogger.error("VPN", "Ошибка при остановке VPN", e)
                 } finally {
-                    // Обязательно сбрасываем UI, даже если была ошибка
                     onConnectedChange(false)
                     onIpChange(null)
                     status.value = "Готов к подключению"
-                    com.grandmenvpn.app.utils.DebugLogger.log("VPN", "VPN отключен пользователем")
+                    DebugLogger.log("VPN", "VPN отключен пользователем")
                 }
             }
         } else {
@@ -271,6 +261,7 @@ fun HomeScreen(
         scanRunning.value = true
         scanStatusText.value = "Поиск источников..."
         status.value = "Сканирование..."
+        DebugLogger.log("Scanner", "Запуск сканирования...")
         
         try {
             delay(500) 
@@ -278,14 +269,16 @@ fun HomeScreen(
             val found = serverScanner.scan()
             
             withContext(Dispatchers.Main) {
-                val customServers = servers.filter { it.source == "Manual" }
+                val customServers = servers.filter { it.source == "Manual" || it.source == "System" || it.protocol == "Custom" }
                 servers.clear()
                 servers.addAll(customServers)
                 servers.addAll(found)
                 status.value = if (found.isEmpty()) "Свободных серверов не найдено" else "Найдено серверов: ${found.size}"
+                DebugLogger.log("Scanner", "Сканирование завершено. Найдено: ${found.size}")
             }
         } catch (e: Exception) {
             status.value = "Ошибка сети: ${e.localizedMessage ?: "Проверьте интернет"}"
+            DebugLogger.error("Scanner", "Ошибка сканирования", e)
         } finally {
             scanRunning.value = false
         }
@@ -310,7 +303,6 @@ fun HomeScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             
-            // Основной UI
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -319,12 +311,12 @@ fun HomeScreen(
                 Text(
                     text = status.value,
                     style = TextStyle(fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant),
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Кнопка подключения
                 Box(modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally)) {
                     Box(modifier = Modifier
                         .size(186.dp)
@@ -410,7 +402,6 @@ fun HomeScreen(
                 }
             }
 
-            // Экран загрузки
             if (scanRunning.value) {
                 Box(
                     modifier = Modifier
@@ -444,7 +435,6 @@ fun HomeScreen(
     }
 }
 
-// Вспомогательная функция для получения IP (вне Composable)
 suspend fun fetchPublicIp(): String? = withContext(Dispatchers.IO) {
     try {
         val url = java.net.URL("https://api.ipify.org")
