@@ -44,10 +44,17 @@ fun ServerList(
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = "${s.host}:${s.port}", style = TextStyle(fontSize = 15.sp, color = Color(0xFFECECEC)))
-                        Text(text = s.protocol, style = TextStyle(fontSize = 12.sp, color = Color(0xFF9E9E9E)))
+                        Text(
+                            text = if (s.source.isNotEmpty() && s.source != "Manual") s.source else s.protocol,
+                            style = TextStyle(fontSize = 12.sp, color = Color(0xFF9E9E9E))
+                        )
                     }
                     Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(pingColor(s.pingMs)))
-                    Text(text = "${s.pingMs} мс", style = TextStyle(fontSize = 14.sp, color = Color(0xFFECECEC)), modifier = Modifier.padding(horizontal = 8.dp))
+                    Text(
+                        text = if (s.pingMs == -1L) "..." else "${s.pingMs} мс",
+                        style = TextStyle(fontSize = 14.sp, color = Color(0xFFECECEC)),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                     Button(
                         onClick = { onConnect(s) },
                         modifier = Modifier.align(Alignment.CenterVertically),

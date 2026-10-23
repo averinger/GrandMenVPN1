@@ -159,5 +159,17 @@ object ServerScanner {
         }
     }
     
+    suspend fun pingSingleServer(host: String, port: Int): Long = withContext(Dispatchers.IO) {
+        val start = System.currentTimeMillis()
+        try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), 3000)
+                System.currentTimeMillis() - start
+            }
+        } catch (e: Exception) {
+            -1 // Если не удалось пропинговать
+        }
+    }
+
     // Функция verifyIpAll удалена, так как мы теперь показываем все сервера, ответившие на пинг
 }

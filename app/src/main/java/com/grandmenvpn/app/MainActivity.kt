@@ -70,6 +70,8 @@ private enum class AppTab(
 @Composable
 fun GrandMenApp() {
     var currentTab by remember { mutableStateOf(AppTab.Home) }
+    var isVpnConnected by remember { mutableStateOf(false) }
+    var currentIp by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         containerColor = SurfaceDark,
@@ -102,7 +104,11 @@ fun GrandMenApp() {
             when (currentTab) {
                 AppTab.Home -> HomeScreen(
                     vpnManager = remember { VpnManager(context) },
-                    serverScanner = ServerScanner
+                    serverScanner = ServerScanner,
+                    isConnected = isVpnConnected,
+                    onConnectedChange = { isVpnConnected = it },
+                    currentIp = currentIp,
+                    onIpChange = { currentIp = it }
                 )
                 AppTab.Manual -> ManualInputScreen(
                     manager = remember { CustomServerManager(context) }

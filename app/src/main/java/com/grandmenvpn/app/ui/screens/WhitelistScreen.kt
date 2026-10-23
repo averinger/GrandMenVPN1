@@ -61,6 +61,8 @@ fun WhitelistScreen(
                 value = newDomain,
                 onValueChange = { newDomain = it },
                 label = { Text("Домен") },
+                placeholder = { Text("example.com") },
+                supportingText = { Text("Вводите только домен, без https:// и путей", fontSize = 12.sp) },
                 modifier = Modifier.weight(1f)
             )
             Button(onClick = { addDomainToList() }) { Text("Добавить") }

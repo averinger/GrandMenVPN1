@@ -40,15 +40,17 @@ import org.json.JSONObject
 @Composable
 fun HomeScreen(
     vpnManager: VpnManager,
-    serverScanner: ServerScanner
+    serverScanner: ServerScanner,
+    isConnected: Boolean,
+    onConnectedChange: (Boolean) -> Unit,
+    currentIp: String?,
+    onIpChange: (String?) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val customServerManager = remember { CustomServerManager(context) }
-    
+
     // Состояния (без делегатов)
-    val connected = remember { mutableStateOf(false) }
-    val serverIp = remember { mutableStateOf<String?>(null) }
     val status = remember { mutableStateOf("Готов к подключению") }
     val servers = remember { mutableStateListOf<FoundServer>() }
     val scanRunning = remember { mutableStateOf(false) }
@@ -78,13 +80,13 @@ fun HomeScreen(
             if (ipBefore != null && ipBefore == ipAfter) {
                 com.grandmenvpn.app.utils.DebugLogger.error("VPN", "ОШИБКА: IP не изменился! Трафик не идет через VPN.")
                 status.value = "Ошибка: IP не изменился (VPN не работает)"
-                connected.value = false
+                onConnectedChange(false)
                 vpnManager.stop()
             } else {
                 com.grandmenvpn.app.utils.DebugLogger.log("VPN", "Успешное подключение! Новый IP: $ipAfter")
-                connected.value = true
+                onConnectedChange(true)
                 status.value = "Подключён к ${s.host}"
-                serverIp.value = ipAfter
+                onIpChange(ipAfter)
             }
         } else {
             com.grandmenvpn.app.utils.DebugLogger.error("VPN", "vpnManager.start() вернул false")
@@ -107,65 +109,66 @@ fun HomeScreen(
         }
     }
 
-    // Загрузка ручных серверов с парсингом реального IP
     LaunchedEffect(Unit) {
         try {
             val customServers = customServerManager.load()
             val mappedServers = customServers.map { custom ->
                 var realHost = custom.name
                 var realPort = 0
+                var displayName = "Custom Server"
+
+                // 1. Парсим имя (если есть #)
+                if (custom.config.contains("#")) {
+                    displayName = custom.config.substringAfter("#").trim()
+                } else if (custom.config.startsWith("vmess://")) {
+                    // Для VMess имя в Base64 (поле ps)
+                    displayName = "VMess Server"
+                }
+
+                // 2. Парсим хост и порт
                 try {
                     val json = JSONObject(custom.outboundJson)
                     val outbounds = json.optJSONArray("outbounds")
                     if (outbounds != null && outbounds.length() > 0) {
                         val outbound = outbounds.getJSONObject(0)
-                        realHost = outbound.optString("server", outbound.optString("host", custom.name))
-                        realPort = outbound.optInt("server_port", outbound.optInt("port", 0))
+                        realHost = outbound.optString("server", custom.name)
+                        realPort = outbound.optInt("server_port", 0)
                     }
-                } catch (e: Exception) {
-                    // Если это сырой WireGuard, вытаскиваем IP и порт регуляркой
-                    val regex = Regex("""Endpoint\s*=\s*([^:]+):(\d+)""")
-                    val match = regex.find(custom.config)
-                    if (match != null) {
-                        realHost = match.groupValues[1]
-                        realPort = match.groupValues[2].toIntOrNull() ?: 0
-                    }
-                }
+                } catch (e: Exception) { }
 
                 FoundServer(
                     protocol = "Custom",
                     host = realHost,
                     port = realPort,
-                    pingMs = 0,
-                    source = "Manual",
+                    pingMs = -1, // Показываем "..." пока не пропингуем
+                    source = displayName, // Используем source для красивого имени
                     config = custom.config,
                     outboundJson = custom.outboundJson
                 )
             }
+
+            // Добавляем в список
             servers.addAll(mappedServers)
-            val testConfig = """
-                {
-                  "outbounds": [
-                    {
-                      "type": "shadowsocks",
-                      "tag": "proxy",
-                      "server": "1.1.1.1",
-                      "server_port": 8388,
-                      "method": "aes-256-gcm",
-                      "password": "test"
+
+            // Запускаем пинг для кастомных серверов в фоне
+            mappedServers.forEach { server ->
+                scope.launch {
+                    val ping = serverScanner.pingSingleServer(server.host, server.port)
+                    // Обновляем пинг в списке
+                    val index = servers.indexOfFirst { it.host == server.host && it.port == server.port }
+                    if (index != -1) {
+                        servers[index] = servers[index].copy(pingMs = ping)
                     }
-                  ]
                 }
-            """.trimIndent()
-            servers.add(FoundServer("Test", "1.1.1.1", 8388, 50, "System", "Test Server", testConfig))
+            }
         } catch (e: Exception) { }
     }
 
     // Анимация пульсации
-    LaunchedEffect(connected.value) {
+    LaunchedEffect(isConnected) {
         pulseScale.value = 1f
         pulseAlpha.value = 0f
-        if (connected.value) {
+        if (isConnected) {
             launch {
                 while (true) {
                     val start = System.currentTimeMillis()
@@ -181,7 +184,7 @@ fun HomeScreen(
     }
 
     val buttonBrush = Brush.linearGradient(
-        colors = if (connected.value)
+        colors = if (isConnected)
             listOf(Color(0xFFF44336), Color(0xFFB71C1C))
         else
             listOf(Color(0xFF00E676), Color(0xFF009E55)),
@@ -194,22 +197,22 @@ fun HomeScreen(
         status.value = "Подключение…"
         val ok = vpnManager.start(s.outboundJson)
         if (ok) {
-            connected.value = true
+            onConnectedChange(true)
             status.value = "Подключён к ${s.host}"
-            serverIp.value = "Получение IP..."
-            serverIp.value = fetchPublicIp() ?: s.host
+            onIpChange("Получение IP...")
+            onIpChange(fetchPublicIp() ?: s.host)
         } else {
-            connected.value = false
+            onConnectedChange(false)
             status.value = "Ошибка подключения"
         }
     }
 
     fun connect() {
-        if (connected.value) {
+        if (isConnected) {
             scope.launch {
                 vpnManager.stop()
-                connected.value = false
-                serverIp.value = null
+                onConnectedChange(false)
+                onIpChange(null)
                 status.value = "Готов к подключению"
                 com.grandmenvpn.app.utils.DebugLogger.log("VPN", "VPN отключен пользователем")
             }
@@ -331,7 +334,7 @@ fun HomeScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (connected.value) "GMVPN\nConnected" else "GMVPN\nConnect",
+                            text = if (isConnected) "GMVPN\nConnected" else "GMVPN\nConnect",
                             color = Color(0xFF121212),
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
@@ -343,7 +346,7 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                serverIp.value?.let { ip ->
+                currentIp?.let { ip ->
                     Text(
                         text = "Ваш IP: $ip",
                         style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary),
@@ -354,7 +357,7 @@ fun HomeScreen(
 
                 Button(
                     onClick = { scan() },
-                    enabled = !scanRunning.value && !connected.value,
+                    enabled = !scanRunning.value && !isConnected,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
